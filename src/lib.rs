@@ -24,10 +24,12 @@ pub enum LispType {
     Map(HashMap<String, LispValue>)
 }
 
+pub type LispResult = Result<LispValue, String>;
+
 named!(string<&[u8], String>,
     delimited!(
         tag!("\""),
-        fold_many0!(//is_not!("\""),
+        fold_many0!(
             alt!(
                 is_not!("\\\"") |
                 map!(
@@ -141,10 +143,10 @@ pub struct Reader {
 }
 
 impl Reader {
-    pub fn read(slice: &[u8]) -> Result<LispValue, &str> {
+    pub fn read(slice: &[u8]) -> LispResult {
         match expression(slice) {
             IResult::Done(_, result) => Ok(Rc::new(result)),
-            _ => Err("Something gone wrong..."),
+            _ => Err("Something gone wrong...".to_owned()),
         }
     }
 }

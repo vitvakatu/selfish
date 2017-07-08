@@ -7,6 +7,7 @@ use nom::{IResult, alphanumeric, alpha, digit, double};
 
 use std::str;
 use std::str::FromStr;
+use std::collections::HashMap;
 
 pub type LispValue = Rc<LispType>;
 pub type LispList = Vec<LispValue>;
@@ -20,6 +21,7 @@ pub enum LispType {
     Float(f64),
     List(LispList),
     Vector(LispList),
+    Map(HashMap<String, LispValue>)
 }
 
 named!(string<&[u8], String>,
@@ -95,7 +97,7 @@ named!(atom<&[u8], LispType>,
 named!(list<&[u8], LispType>,
     map!(delimited!(
         char!('('),
-        many0!(ws!(alt!(atom | list | vector))),
+        many0!(ws!(alt!(atom | list | vector | hash_map))),
         char!(')')
     ),
     |v| {
@@ -110,7 +112,7 @@ named!(list<&[u8], LispType>,
 named!(vector<&[u8], LispType>,
     map!(delimited!(
         char!('['),
-        many0!(ws!(alt!(atom | list | vector))),
+        many0!(ws!(alt!(atom | list | vector | hash_map))),
         char!(']')
     ),
     |v| {
@@ -122,8 +124,23 @@ named!(vector<&[u8], LispType>,
     })
 );
 
+named!(hash_map<LispType>,
+    map!(delimited!(
+        char!('{'),
+        many0!(ws!(pair!(keyword, alt!(atom | list | vector | hash_map)))),
+        char!('}')
+    ),
+    |v| {
+        let mut result = HashMap::new();
+        for e in v {
+            result.insert(e.0, Rc::new(e.1));
+        }
+        LispType::Map(result)
+    })
+);
+
 named!(expression<&[u8], LispType>,
-    alt!(atom | list)
+    alt!(atom | list | vector | hash_map)
 );
 
 pub struct Reader {
@@ -162,6 +179,16 @@ fn print_str(ast: LispValue) -> String {
                 }
             }
             format!("[{}]", &result)
+        },
+        LispType::Map(ref v) => {
+            let mut result = String::new();
+            for (i, (key, value)) in v.iter().enumerate() {
+                result.push_str(&format!(":{} {}", &key, &print_str(value.clone())));
+                if i != v.len() - 1 {
+                    result.push_str(" ");
+                }
+            }
+            format!("{{{}}}", &result)
         },
         LispType::Str(ref v) => format!("\"{}\"", v),
         LispType::Symbol(ref v) => v.clone(),

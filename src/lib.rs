@@ -3,7 +3,7 @@ use std::rc::Rc;
 #[macro_use]
 extern crate nom;
 
-use nom::{IResult, alphanumeric, alpha, digit, double};
+use nom::{IResult, alphanumeric, alpha, digit, double, anychar};
 
 use std::str;
 use std::str::FromStr;
@@ -23,12 +23,20 @@ pub enum LispType {
 named!(string<&[u8], String>,
     delimited!(
         tag!("\""),
-        map_res!(
-            escaped!(
-                ws!(call!(alphanumeric)), '\\', is_a!("\\n\"")
-                    ),
-            |v: &[u8]| { String::from_utf8(v.to_vec()) }
+        fold_many0!(//is_not!("\""),
+            alt!(
+                is_not!("\\\"") |
+                map!(
+                    complete!(tag!("\\\"")),
+                    |_| &b"\""[..]
+                )
             ),
+            String::new(),
+            |mut acc: String, bytes: &[u8]| {
+                acc.push_str(str::from_utf8(bytes).expect("Wrong utf8"));
+                acc
+            }
+        ),
         tag!("\"")
     )
 );
@@ -120,7 +128,7 @@ fn print_str(ast: LispValue) -> String {
             }
             format!("({})", &result)
         },
-        LispType::Str(ref v) => v.clone(),
+        LispType::Str(ref v) => format!("\"{}\"", v),
         LispType::Symbol(ref v) => v.clone(),
     }
 }
@@ -157,7 +165,10 @@ mod tests {
 
     #[test]
     fn strings() {
-        assert_eq!(atom(&b"\"some string\""[..]), IResult::Done(&b""[..], LispType::Str("some string".to_string())));
+        assert_eq!(atom(&b"\"some string\""[..]), IResult::Done(&b""[..],
+        LispType::Str("some string".to_owned())));
+        assert_eq!(atom(&b"\"some \\\"escaped\\\" string\""[..]), IResult::Done(&b""[..],
+        LispType::Str("some \"escaped\" string".to_owned())));
     }
 
     #[test]

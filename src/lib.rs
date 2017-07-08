@@ -21,7 +21,8 @@ pub enum LispType {
     Float(f64),
     List(LispList),
     Vector(LispList),
-    Map(HashMap<String, LispValue>)
+    Map(HashMap<String, LispValue>),
+    Func(fn(LispList) -> LispResult),
 }
 
 pub type LispResult = Result<LispValue, String>;
@@ -188,7 +189,8 @@ fn print_str(ast: LispValue) -> String {
         },
         LispType::Str(ref v) => format!("\"{}\"", v),
         LispType::Symbol(ref v) => v.clone(),
-        LispType::Keyword(ref v) => format!(":{}", v)
+        LispType::Keyword(ref v) => format!(":{}", v),
+        LispType::Func(_) => "#function".to_owned(),
     }
 }
 
@@ -199,6 +201,28 @@ impl Writer {
     pub fn print(ast: LispValue) -> String {
         print_str(ast)
     }
+}
+
+fn add(input: LispList) -> LispResult {
+    match *input[0].clone() {
+        LispType::Int(_) => {
+            let mut result = 0;
+            for e in input {
+                match *e {
+                    LispType::Int(v) => { result += v; },
+                    _ => return Err("Invalid types".to_owned()),
+                }
+            }
+            Ok(Rc::new(LispType::Int(result)))
+        }
+        _ => return Err("Invalid types".to_owned()),
+    }
+}
+
+pub fn standart_environment() -> HashMap<String, LispValue> {
+    let mut result = HashMap::new();
+    result.insert("+".to_owned(), Rc::new(LispType::Func(add)));
+    result
 }
 
 #[cfg(test)]

@@ -3,7 +3,7 @@ use std::rc::Rc;
 #[macro_use]
 extern crate nom;
 
-use nom::{IResult, alphanumeric, alpha, digit, double};
+use nom::{IResult, digit, double};
 
 use std::str;
 use std::str::FromStr;
@@ -66,15 +66,9 @@ named!(number<LispType>,
 );
 
 named!(symbol<String>,
-    map!(do_parse!(
-        first: map_res!(alpha, str::from_utf8) >>
-        rest: opt!(complete!(map_res!(alphanumeric, str::from_utf8))) >>
-        (first, rest)
-    ),
-    |(first, rest)| {
-        let mut string = first.to_owned();
-        string.push_str(rest.unwrap_or(""));
-        string
+    map!(many1!(none_of!("[](){}\"\t\n\r ")),
+    |v| {
+        v.into_iter().collect()
     })
 );
 
@@ -89,10 +83,10 @@ named!(atom<&[u8], LispType>,
     alt_complete!(number |
                   tag!("true") => { |_| LispType::Boolean(true) } |
                   tag!("false") => { |_| LispType::Boolean(false) } |
-                  symbol => { |v| LispType::Symbol(v) } |
                   keyword => { |v| LispType::Keyword(v) } |
-                  string => { |v| LispType::Str(v) })
-);
+                  string => { |v| LispType::Str(v) } |
+                  symbol => { |v| LispType::Symbol(v) }
+));
 
 named!(list<&[u8], LispType>,
     map!(delimited!(

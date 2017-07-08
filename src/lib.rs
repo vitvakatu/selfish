@@ -19,6 +19,7 @@ pub enum LispType {
     Boolean(bool),
     Float(f64),
     List(LispList),
+    Vector(LispList),
 }
 
 named!(string<&[u8], String>,
@@ -94,7 +95,7 @@ named!(atom<&[u8], LispType>,
 named!(list<&[u8], LispType>,
     map!(delimited!(
         char!('('),
-        many0!(ws!(alt!(atom | list))),
+        many0!(ws!(alt!(atom | list | vector))),
         char!(')')
     ),
     |v| {
@@ -103,6 +104,21 @@ named!(list<&[u8], LispType>,
             result.push(Rc::new(e));
         }
         LispType::List(result)
+    })
+);
+
+named!(vector<&[u8], LispType>,
+    map!(delimited!(
+        char!('['),
+        many0!(ws!(alt!(atom | list | vector))),
+        char!(']')
+    ),
+    |v| {
+        let mut result = Vec::new();
+        for e in v {
+            result.push(Rc::new(e));
+        }
+        LispType::Vector(result)
     })
 );
 
@@ -136,6 +152,16 @@ fn print_str(ast: LispValue) -> String {
                 }
             }
             format!("({})", &result)
+        },
+        LispType::Vector(ref v) => {
+            let mut result = String::new();
+            for (i, e) in v.iter().enumerate() {
+                result.push_str(&print_str(e.clone()));
+                if i != v.len() - 1 {
+                    result.push_str(" ");
+                }
+            }
+            format!("[{}]", &result)
         },
         LispType::Str(ref v) => format!("\"{}\"", v),
         LispType::Symbol(ref v) => v.clone(),
@@ -201,5 +227,26 @@ mod tests {
         ]);
         assert_eq!(list(&b"((somesymbol 11 true 1.3 10231 -30 \"some string\") somesymbol)"[..]),
         IResult::Done(&b""[..], list2));
+    }
+
+    #[test]
+    fn vectors() {
+        let vector1 = LispType::Vector(vec![
+            Rc::new(LispType::Symbol("somesymbol".to_owned())),
+            Rc::new(LispType::Int(11)),
+            Rc::new(LispType::Boolean(true)),
+            Rc::new(LispType::Float(1.3)),
+            Rc::new(LispType::Int(10231)),
+            Rc::new(LispType::Int(-30)),
+            Rc::new(LispType::Str("some string".to_owned())),
+        ]);
+        assert_eq!(vector(&b"[somesymbol 11 true 1.3 10231 -30 \"some string\"]"[..]),
+        IResult::Done(&b""[..], vector1.clone()));
+        let vector2 = LispType::Vector(vec![
+            Rc::new(vector1),
+            Rc::new(LispType::Symbol("somesymbol".to_owned())),
+        ]);
+        assert_eq!(vector(&b"[[somesymbol 11 true 1.3 10231 -30 \"some string\"] somesymbol]"[..]),
+        IResult::Done(&b""[..], vector2));
     }
 }

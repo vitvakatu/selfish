@@ -3,7 +3,7 @@ use std::rc::Rc;
 #[macro_use]
 extern crate nom;
 
-use nom::{IResult, alphanumeric, alpha, digit, double, anychar};
+use nom::{IResult, alphanumeric, alpha, digit, double};
 
 use std::str;
 use std::str::FromStr;
@@ -15,6 +15,7 @@ pub enum LispType {
     Int(isize),
     Symbol(String),
     Str(String),
+    Keyword(String),
     Boolean(bool),
     Float(f64),
     List(LispList),
@@ -74,11 +75,19 @@ named!(symbol<String>,
     })
 );
 
+named!(keyword<String>,
+    preceded!(
+        tag!(":"),
+        symbol
+    )
+);
+
 named!(atom<&[u8], LispType>,
     alt_complete!(number |
                   tag!("true") => { |_| LispType::Boolean(true) } |
                   tag!("false") => { |_| LispType::Boolean(false) } |
                   symbol => { |v| LispType::Symbol(v) } |
+                  keyword => { |v| LispType::Keyword(v) } |
                   string => { |v| LispType::Str(v) })
 );
 
@@ -130,6 +139,7 @@ fn print_str(ast: LispValue) -> String {
         },
         LispType::Str(ref v) => format!("\"{}\"", v),
         LispType::Symbol(ref v) => v.clone(),
+        LispType::Keyword(ref v) => format!(":{}", v)
     }
 }
 
@@ -149,7 +159,8 @@ mod tests {
     fn atoms() {
         assert_eq!(atom(&b"true"[..]), IResult::Done(&b""[..], LispType::Boolean(true)));
         assert_eq!(atom(&b"false"[..]), IResult::Done(&b""[..], LispType::Boolean(false)));
-        assert_eq!(atom(&b"function"[..]), IResult::Done(&b""[..], LispType::Symbol("function".to_string())));
+        assert_eq!(atom(&b"function"[..]), IResult::Done(&b""[..], LispType::Symbol("function".to_owned())));
+        assert_eq!(atom(&b":keyword"[..]), IResult::Done(&b""[..], LispType::Keyword("keyword".to_owned())));
     }
 
     #[test]

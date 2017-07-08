@@ -1,5 +1,4 @@
 extern crate rustyline;
-use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
 extern crate mylisp;

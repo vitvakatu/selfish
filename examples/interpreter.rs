@@ -3,7 +3,6 @@ use rustyline::Editor;
 
 extern crate mylisp;
 use mylisp::*;
-use std::collections::HashMap;
 use std::rc::Rc;
 
 fn read(s: String) -> LispResult {
@@ -50,6 +49,29 @@ fn eval(s: LispValue, env: Environment) -> LispResult {
                         return Err("First arg of 'def!' should be symbol".to_owned());
                     }
                 },
+                LispType::Symbol(ref sym) if sym == "let" => {
+                    if v.len() != 3 {
+                        return Err("Wrong arity of 'let'!".to_owned());
+                    }
+                    let new_env = EnvironmentStruct::new(Some(env.clone()));
+                    if let LispType::Vector(ref v) = *v[1] {
+                        if v.len() % 2 != 0 {
+                            return Err("Count of the 'let' bindings isn't even".to_owned());
+                        }
+                        let mut it = v.iter();
+                        while it.len() >= 2 {
+                            let bind = it.next().unwrap();
+                            let expr = it.next().unwrap();
+                            if let LispType::Symbol(ref b) = **bind {
+                                let e = eval(expr.clone(), new_env.clone())?;
+                                new_env.borrow_mut().set(b.clone(),e);
+                            }
+                        }
+                    } else {
+                        return Err("binding list must be vector".to_owned());
+                    }
+                    return eval(v[2].clone(), new_env.clone());
+                }
                 _ => {},
             }
             let evaluated = eval_ast(s.clone(), env.clone())?;

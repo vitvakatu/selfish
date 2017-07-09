@@ -257,11 +257,11 @@ pub struct EnvironmentStruct {
 }
 
 impl EnvironmentStruct {
-    fn new(outer: Option<Environment>) -> Self {
-        EnvironmentStruct {
+    pub fn new(outer: Option<Environment>) -> Environment {
+        Rc::new(RefCell::new(EnvironmentStruct {
             data: HashMap::new(),
             outer: outer,
-        }
+        }))
     }
 
     pub fn set(&mut self, key: String, val: LispValue) {
@@ -292,7 +292,7 @@ impl EnvironmentStruct {
 
 
 pub fn standart_environment() -> Environment {
-    let result = Environment::new(RefCell::new(EnvironmentStruct::new(None)));
+    let result = EnvironmentStruct::new(None);
     {
         let mut r = result.borrow_mut();
         r.set("+".to_owned(), Rc::new(LispType::Func(add)));

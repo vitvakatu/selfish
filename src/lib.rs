@@ -24,9 +24,58 @@ pub enum LispType {
     Vector(LispList),
     Map(HashMap<String, LispValue>),
     Func(fn(LispList) -> LispResult),
+    Closure(LispClosure),
 }
 
 pub type LispResult = Result<LispValue, String>;
+
+#[derive(Clone)]
+pub struct LispClosure {
+    pub binds: Vec<String>,
+    pub body: LispValue,
+    pub env: Environment,
+    //pub func: Rc<Fn(LispList) -> LispResult>,
+}
+
+impl PartialEq for LispClosure {
+    fn eq(&self, _: &LispClosure) -> bool {
+        false
+    }
+}
+
+impl std::fmt::Debug for LispClosure {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "LispClosure")
+    }
+}
+
+/*impl LispClosure {
+    pub fn new(binds: LispList, exprs: LispList, outer_env: Environment) -> Self {
+        LispClosure {
+            binds,
+            exprs,
+            outer_env,
+        }
+    }
+}*/
+
+/*impl LispType {
+    pub fn apply(&self, args: LispList) -> LispResult {
+        match *self {
+            LispType::Func(f) => {
+                (f)(args)
+            },
+            LispType::Closure(ref c) => {
+                let new_env = EnvironmentStruct::with_bindings(
+                    c.outer_env.clone(),
+                    c.binds,
+                    args
+                );
+
+            }
+        }
+    }
+}*/
 
 named!(string<&[u8], String>,
     delimited!(
@@ -192,6 +241,7 @@ fn print_str(ast: LispValue) -> String {
         LispType::Symbol(ref v) => v.clone(),
         LispType::Keyword(ref v) => format!(":{}", v),
         LispType::Func(_) => "#<function>".to_owned(),
+        LispType::Closure(_) => "#<closure>".to_owned(),
     }
 }
 
@@ -250,7 +300,7 @@ arithmetic_function!(div, std::ops::Div::div, 1.0);
 
 pub type Environment = Rc<RefCell<EnvironmentStruct>>;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct EnvironmentStruct {
     data: HashMap<String, LispValue>,
     outer: Option<Environment>,

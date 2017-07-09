@@ -184,6 +184,13 @@ impl EnvironmentStruct {
         }))
     }
 
+    pub fn top(env: &Environment) -> Environment {
+        match env.borrow().outer {
+            Some(ref e) => EnvironmentStruct::top(e),
+            None => env.clone(),
+        }
+    }
+
     pub fn with_bindings(outer: Option<Environment>,
                          binds: Vec<String>,
                          exprs: Vec<LispValue>) -> Environment {

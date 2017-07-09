@@ -348,7 +348,13 @@ impl EnvironmentStruct {
     pub fn get(&self, key: String) -> LispResult {
         match self.data.get(&key) {
             Some(v) => Ok(v.clone()),
-            None => Err(format!("No value with name '{}' in the current scope", &key)),
+            None => {
+                if let Some(env) = self.find(key.clone()) {
+                    env.borrow().get(key)
+                } else {
+                    Err(format!("No value with name '{}' in the current scope", &key))
+                }
+            },
         }
     }
 }

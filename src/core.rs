@@ -296,6 +296,30 @@ pub fn internal_swap(args: LispList) -> LispResult {
     }
 }
 
+fn internal_cons(args: LispList) -> LispResult {
+    if args.len() != 2 {
+        return Err("Invalid arity of 'cons' function".to_owned());
+    }
+    if let LispType::List(ref v) = **args[1].clone() {
+        let mut result = v.clone();
+        result.insert(0, args[0].clone());
+        Ok(LispValue::list(result))
+    } else {
+        Err("Invalid arguments of 'cons' function".to_owned())
+    }
+}
+
+fn internal_concat(args: LispList) -> LispResult {
+    let mut result = Vec::new();
+    for e in args {
+        match **e {
+            LispType::List(ref v) => result.extend(v.iter().cloned()),
+            _ => return Err("Invalid arguments of 'concat' function".to_owned()),
+        }
+    }
+    Ok(LispValue::list(result))
+}
+
 pub fn standart_environment() -> Environment {
     let result = EnvironmentStruct::new(None);
     {
@@ -326,6 +350,9 @@ pub fn standart_environment() -> Environment {
         r.set("deref".to_owned(), LispValue::func(internal_deref));
         r.set("reset!".to_owned(), LispValue::func(internal_reset));
         r.set("swap!".to_owned(), LispValue::func(internal_swap));
+
+        r.set("cons".to_owned(), LispValue::func(internal_cons));
+        r.set("concat".to_owned(), LispValue::func(internal_concat));
     }
     result
 }

@@ -50,8 +50,24 @@ fn internal_print(args: LispList) -> LispResult {
     if args.len() != 1 {
         return Err("Invalid arity of 'print' function".to_owned());
     }
+    print!("{}", &Writer::print(args[0].clone()));
+    Ok(LispValue::nothing())
+}
+
+fn internal_println(args: LispList) -> LispResult {
+    if args.len() != 1 {
+        return Err("Invalid arity of 'print' function".to_owned());
+    }
     println!("{}", &Writer::print(args[0].clone()));
     Ok(LispValue::nothing())
+}
+
+fn internal_str(args: LispList) -> LispResult {
+    let mut result = String::new();
+    for e in args {
+        result.push_str(&Writer::print(e.clone()));
+    }
+    Ok(LispValue::string(result))
 }
 
 fn internal_list(args: LispList) -> LispResult {
@@ -188,6 +204,8 @@ pub fn standart_environment() -> Environment {
         r.set("/".to_owned(), LispValue::func(div));
 
         r.set("print".to_owned(), LispValue::func(internal_print));
+        r.set("println".to_owned(), LispValue::func(internal_println));
+        r.set("str".to_owned(), LispValue::func(internal_str));
         r.set("list".to_owned(), LispValue::func(internal_list));
         r.set("list?".to_owned(), LispValue::func(internal_listq));
         r.set("empty?".to_owned(), LispValue::func(internal_emptyq));

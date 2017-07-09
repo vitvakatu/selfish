@@ -369,6 +369,25 @@ fn internal_print(args: LispList) -> LispResult {
     Ok(Rc::new(LispType::Nothing))
 }
 
+fn internal_list(args: LispList) -> LispResult {
+    let mut result = Vec::new();
+    for e in args {
+        result.push(e.clone());
+    }
+    Ok(Rc::new(LispType::List(result)))
+}
+
+fn internal_listq(args: LispList) -> LispResult {
+    if args.len() != 1 {
+        return Err("Invalid arity of 'list?' function".to_owned());
+    }
+    if let LispType::List(_) = *args[0] {
+        Ok(Rc::new(LispType::Boolean(true)))
+    } else {
+        Ok(Rc::new(LispType::Boolean(false)))
+    }
+}
+
 pub fn standart_environment() -> Environment {
     let result = EnvironmentStruct::new(None);
     {
@@ -379,6 +398,8 @@ pub fn standart_environment() -> Environment {
         r.set("/".to_owned(), Rc::new(LispType::Func(div)));
 
         r.set("print".to_owned(), Rc::new(LispType::Func(internal_print)));
+        r.set("list".to_owned(), Rc::new(LispType::Func(internal_list)));
+        r.set("list?".to_owned(), Rc::new(LispType::Func(internal_listq)));
     }
     result
 }

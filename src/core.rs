@@ -206,6 +206,22 @@ fn internal_read_string(args: LispList) -> LispResult {
     }
 }
 
+fn internal_slurp(args: LispList) -> LispResult {
+    if args.len() != 1 {
+        return Err("Invalid arity of 'slurp' function".to_owned());
+    }
+    use std::io::prelude::*;
+    use std::fs::File;
+    if let LispType::Str(ref s) = **args[0] {
+        let mut f = File::open(s).unwrap();
+        let mut buffer = String::new();
+        f.read_to_string(&mut buffer).unwrap();
+        Ok(LispValue::string(buffer))
+    } else {
+        Err("Invalid argument of 'slurp' function (should be string)".to_owned())
+    }
+}
+
 pub fn standart_environment() -> Environment {
     let result = EnvironmentStruct::new(None);
     {
@@ -229,6 +245,7 @@ pub fn standart_environment() -> Environment {
         r.set(">".to_owned(), LispValue::func(internal_gt));
 
         r.set("read-string".to_owned(), LispValue::func(internal_read_string));
+        r.set("slurp".to_owned(), LispValue::func(internal_slurp));
     }
     result
 }

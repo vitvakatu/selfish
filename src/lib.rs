@@ -25,6 +25,7 @@ pub enum LispType {
     Map(HashMap<String, LispValue>),
     Func(fn(LispList) -> LispResult),
     Closure(LispClosure),
+    Nothing,
 }
 
 pub type LispResult = Result<LispValue, String>;
@@ -242,6 +243,7 @@ fn print_str(ast: LispValue) -> String {
         LispType::Keyword(ref v) => format!(":{}", v),
         LispType::Func(_) => "#<function>".to_owned(),
         LispType::Closure(_) => "#<closure>".to_owned(),
+        LispType::Nothing => "".to_owned(),
     }
 }
 
@@ -359,6 +361,13 @@ impl EnvironmentStruct {
     }
 }
 
+fn internal_print(args: LispList) -> LispResult {
+    if args.len() != 1 {
+        return Err("Invalid arity of 'print' function".to_owned());
+    }
+    println!("{}", &Writer::print(args[0].clone()));
+    Ok(Rc::new(LispType::Nothing))
+}
 
 pub fn standart_environment() -> Environment {
     let result = EnvironmentStruct::new(None);
@@ -368,6 +377,8 @@ pub fn standart_environment() -> Environment {
         r.set("-".to_owned(), Rc::new(LispType::Func(sub)));
         r.set("*".to_owned(), Rc::new(LispType::Func(mult)));
         r.set("/".to_owned(), Rc::new(LispType::Func(div)));
+
+        r.set("print".to_owned(), Rc::new(LispType::Func(internal_print)));
     }
     result
 }

@@ -153,7 +153,7 @@ fn eval(s: LispValue, env: Environment) -> LispResult {
 
 fn print(s: LispResult) {
     match s {
-        Ok(v) => println!("{}", &Writer::print(v)),
+        Ok(v) => println!("{}", &Writer::print(v, false)),
         Err(e) => println!("Eval error: {}", &e),
     }
 }

@@ -50,7 +50,7 @@ fn internal_print(args: LispList) -> LispResult {
     if args.len() != 1 {
         return Err("Invalid arity of 'print' function".to_owned());
     }
-    print!("{}", &Writer::print(args[0].clone()));
+    print!("{}", &Writer::print(args[0].clone(), true));
     Ok(LispValue::nothing())
 }
 
@@ -58,14 +58,14 @@ fn internal_println(args: LispList) -> LispResult {
     if args.len() != 1 {
         return Err("Invalid arity of 'print' function".to_owned());
     }
-    println!("{}", &Writer::print(args[0].clone()));
+    println!("{}", &Writer::print(args[0].clone(), true));
     Ok(LispValue::nothing())
 }
 
 fn internal_str(args: LispList) -> LispResult {
     let mut result = String::new();
     for e in args {
-        result.push_str(&Writer::print(e.clone()));
+        result.push_str(&Writer::print(e.clone(), true));
     }
     Ok(LispValue::string(result))
 }

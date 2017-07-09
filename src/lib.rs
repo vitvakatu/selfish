@@ -108,7 +108,7 @@ impl std::fmt::Debug for LispClosure {
     }
 }
 
-fn print_str(ast: LispValue) -> String {
+fn print_str(ast: LispValue, pretty: bool) -> String {
     match **ast {
         LispType::Boolean(ref v) => v.to_string(),
         LispType::Float(ref v) => v.to_string(),
@@ -116,7 +116,7 @@ fn print_str(ast: LispValue) -> String {
         LispType::List(ref v) => {
             let mut result = String::new();
             for (i, e) in v.iter().enumerate() {
-                result.push_str(&print_str(e.clone()));
+                result.push_str(&print_str(e.clone(), pretty));
                 if i != v.len() - 1 {
                     result.push_str(" ");
                 }
@@ -126,7 +126,7 @@ fn print_str(ast: LispValue) -> String {
         LispType::Vector(ref v) => {
             let mut result = String::new();
             for (i, e) in v.iter().enumerate() {
-                result.push_str(&print_str(e.clone()));
+                result.push_str(&print_str(e.clone(), pretty));
                 if i != v.len() - 1 {
                     result.push_str(" ");
                 }
@@ -136,14 +136,19 @@ fn print_str(ast: LispValue) -> String {
         LispType::Map(ref v) => {
             let mut result = String::new();
             for (i, (key, value)) in v.iter().enumerate() {
-                result.push_str(&format!(":{} {}", &key, &print_str(value.clone())));
+                result.push_str(&format!(":{} {}", &key,
+                                &print_str(value.clone(), pretty)));
                 if i != v.len() - 1 {
                     result.push_str(" ");
                 }
             }
             format!("{{{}}}", &result)
         },
-        LispType::Str(ref v) => format!("\"{}\"", v),
+        LispType::Str(ref v) => if pretty {
+            format!("{}", v)
+        } else {
+            format!("\"{}\"", v)
+        },
         LispType::Symbol(ref v) => v.clone(),
         LispType::Keyword(ref v) => format!(":{}", v),
         LispType::Func(_) => "#<function>".to_owned(),
@@ -156,8 +161,8 @@ pub struct Writer {
 }
 
 impl Writer {
-    pub fn print(ast: LispValue) -> String {
-        print_str(ast)
+    pub fn print(ast: LispValue, pretty: bool) -> String {
+        print_str(ast, pretty)
     }
 }
 

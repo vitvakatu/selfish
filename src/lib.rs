@@ -202,26 +202,57 @@ impl Writer {
         print_str(ast)
     }
 }
-
-fn add(input: LispList) -> LispResult {
-    match *input[0].clone() {
-        LispType::Int(_) => {
-            let mut result = 0;
-            for e in input {
-                match *e {
-                    LispType::Int(v) => { result += v; },
-                    _ => return Err("Invalid types".to_owned()),
+macro_rules! arithmetic_function {
+    ($name: ident, $op: expr, $finit:expr) => (
+        fn $name(input: LispList) -> LispResult {
+            let err = Err("Invalid types: arithmetic operations works \
+                        with ints and floats only".to_owned());
+            if input.len() == 0 {
+                return Ok(Rc::new(LispType::Int(0)));
+            }
+            if input.len() == 1 {
+                return Ok(input[0].clone());
+            }
+            let mut result = match *input[0] {
+                LispType::Int(v) => LispType::Int(v),
+                LispType::Float(v) => LispType::Float(v),
+                _ => return err,
+            };
+            for e in &input[1..] {
+                match **e {
+                    LispType::Int(i) => {
+                        result = match result {
+                            LispType::Int(v) => LispType::Int($op(v, i)),
+                            LispType::Float(v) => LispType::Float($op(v, i as f64)),
+                            _ => unreachable!(),
+                        };
+                    },
+                    LispType::Float(f) => {
+                        result = match result {
+                            LispType::Int(v) => LispType::Float($op(v as f64, f)),
+                            LispType::Float(v) => LispType::Float($op(v, f)),
+                            _ => unreachable!(),
+                        };
+                    },
+                    _ => return err,
                 }
             }
-            Ok(Rc::new(LispType::Int(result)))
+            Ok(Rc::new(result.clone()))
         }
-        _ => return Err("Invalid types".to_owned()),
-    }
+    )
 }
+
+arithmetic_function!(add, std::ops::Add::add, 0.0);
+arithmetic_function!(sub, std::ops::Sub::sub, 0.0);
+arithmetic_function!(mult, std::ops::Mul::mul, 1.0);
+arithmetic_function!(div, std::ops::Div::div, 1.0);
 
 pub fn standart_environment() -> HashMap<String, LispValue> {
     let mut result = HashMap::new();
     result.insert("+".to_owned(), Rc::new(LispType::Func(add)));
+    result.insert("-".to_owned(), Rc::new(LispType::Func(sub)));
+    result.insert("*".to_owned(), Rc::new(LispType::Func(mult)));
+    result.insert("/".to_owned(), Rc::new(LispType::Func(div)));
     result
 }
 

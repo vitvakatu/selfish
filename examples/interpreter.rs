@@ -18,12 +18,19 @@ fn eval_ast(s: LispValue, env: &HashMap<String, LispValue>) -> LispResult {
                 None => Err(format!("Invalid symbol: {}", k)),
             }
         },
-        LispType::List(ref v) => {
+        LispType::List(ref v) | LispType::Vector(ref v) => {
             let mut result = Vec::new();
             for e in v {
                 result.push(eval(e.clone(), env)?);
             }
             Ok(Rc::new(LispType::List(result)))
+        },
+        LispType::Map(ref m) => {
+            let mut result = m.clone();
+            for (k, v) in m {
+                result.insert(k.to_owned(), eval(v.clone(), env)?);
+            }
+            Ok(Rc::new(LispType::Map(result)))
         },
         _ => Ok(s.clone()),
     }

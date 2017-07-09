@@ -191,7 +191,7 @@ fn print_str(ast: LispValue) -> String {
         LispType::Str(ref v) => format!("\"{}\"", v),
         LispType::Symbol(ref v) => v.clone(),
         LispType::Keyword(ref v) => format!(":{}", v),
-        LispType::Func(_) => "#function".to_owned(),
+        LispType::Func(_) => "#<function>".to_owned(),
     }
 }
 
@@ -262,6 +262,19 @@ impl EnvironmentStruct {
             data: HashMap::new(),
             outer: outer,
         }))
+    }
+
+    pub fn with_bindings(outer: Option<Environment>,
+                         binds: Vec<String>,
+                         exprs: Vec<LispValue>) -> Environment {
+        let mut result = EnvironmentStruct {
+            data: HashMap::new(),
+            outer: outer,
+        };
+        for (b, e) in binds.into_iter().zip(exprs.into_iter()) {
+            result.set(b, e);
+        }
+        Rc::new(RefCell::new(result))
     }
 
     pub fn set(&mut self, key: String, val: LispValue) {

@@ -166,7 +166,7 @@ pub fn eval(mut s: Value, mut env: Environment) -> LispResult {
                         }
                         let len = v.len() - 1;
                         for e in &v[1..len] {
-                            let _ = eval(e.clone(), env.clone());
+                            let _ = eval(e.clone(), env.clone())?;
                         }
                         s = v[len].clone();
                         continue;

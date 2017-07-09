@@ -71,7 +71,17 @@ fn eval(s: LispValue, env: Environment) -> LispResult {
                         return Err("binding list must be vector".to_owned());
                     }
                     return eval(v[2].clone(), new_env.clone());
-                }
+                },
+                LispType::Symbol(ref sym) if sym == "do" => {
+                    if v.len() <= 2 {
+                        return Err("Empty do statement".to_owned());
+                    }
+                    let len = v.len() - 1;
+                    for e in &v[1..len] {
+                        let _ = eval_ast(e.clone(), env.clone());
+                    }
+                    return eval_ast(v[len].clone(), env.clone());
+                },
                 _ => {},
             }
             let evaluated = eval_ast(s.clone(), env.clone())?;

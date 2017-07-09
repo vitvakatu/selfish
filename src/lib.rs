@@ -8,6 +8,7 @@ use nom::{IResult, digit, double};
 use std::str;
 use std::str::FromStr;
 use std::collections::HashMap;
+use std::cell::RefCell;
 
 pub type LispValue = Rc<LispType>;
 pub type LispList = Vec<LispValue>;
@@ -247,12 +248,58 @@ arithmetic_function!(sub, std::ops::Sub::sub, 0.0);
 arithmetic_function!(mult, std::ops::Mul::mul, 1.0);
 arithmetic_function!(div, std::ops::Div::div, 1.0);
 
-pub fn standart_environment() -> HashMap<String, LispValue> {
-    let mut result = HashMap::new();
-    result.insert("+".to_owned(), Rc::new(LispType::Func(add)));
-    result.insert("-".to_owned(), Rc::new(LispType::Func(sub)));
-    result.insert("*".to_owned(), Rc::new(LispType::Func(mult)));
-    result.insert("/".to_owned(), Rc::new(LispType::Func(div)));
+pub type Environment = Rc<RefCell<EnvironmentStruct>>;
+
+#[derive(Clone, Debug)]
+pub struct EnvironmentStruct {
+    data: HashMap<String, LispValue>,
+    outer: Option<Environment>,
+}
+
+impl EnvironmentStruct {
+    fn new(outer: Option<Environment>) -> Self {
+        EnvironmentStruct {
+            data: HashMap::new(),
+            outer: outer,
+        }
+    }
+
+    pub fn set(&mut self, key: String, val: LispValue) {
+        self.data.insert(key, val);
+    }
+
+    pub fn find(&self, key: String) -> Option<Environment> {
+        if self.data.contains_key(&key) {
+            Some(Rc::new(RefCell::new(self.clone())))
+        } else {
+            match self.outer {
+                Some(ref outer) => {
+                    let outer = outer.borrow();
+                    outer.find(key)
+                },
+                None => None,
+            }
+        }
+    }
+
+    pub fn get(&self, key: String) -> LispResult {
+        match self.data.get(&key) {
+            Some(v) => Ok(v.clone()),
+            None => Err(format!("No value with name '{}' in the current scope", &key)),
+        }
+    }
+}
+
+
+pub fn standart_environment() -> Environment {
+    let result = Environment::new(RefCell::new(EnvironmentStruct::new(None)));
+    {
+        let mut r = result.borrow_mut();
+        r.set("+".to_owned(), Rc::new(LispType::Func(add)));
+        r.set("-".to_owned(), Rc::new(LispType::Func(sub)));
+        r.set("*".to_owned(), Rc::new(LispType::Func(mult)));
+        r.set("/".to_owned(), Rc::new(LispType::Func(div)));
+    }
     result
 }
 

@@ -10,25 +10,20 @@ fn read(s: String) -> LispResult {
     Reader::read(s.as_bytes())
 }
 
-fn eval_ast(s: LispValue, env: &HashMap<String, LispValue>) -> LispResult {
+fn eval_ast(s: LispValue, env: Environment) -> LispResult {
     match *s {
-        LispType::Symbol(ref k) => {
-            match env.get(k) {
-                Some(v) => Ok(v.clone()),
-                None => Err(format!("Invalid symbol: {}", k)),
-            }
-        },
+        LispType::Symbol(ref k) => env.borrow().get(k.clone()),
         LispType::List(ref v) | LispType::Vector(ref v) => {
             let mut result = Vec::new();
             for e in v {
-                result.push(eval(e.clone(), env)?);
+                result.push(eval(e.clone(), env.clone())?);
             }
             Ok(Rc::new(LispType::List(result)))
         },
         LispType::Map(ref m) => {
             let mut result = m.clone();
             for (k, v) in m {
-                result.insert(k.to_owned(), eval(v.clone(), env)?);
+                result.insert(k.to_owned(), eval(v.clone(), env.clone())?);
             }
             Ok(Rc::new(LispType::Map(result)))
         },
@@ -36,13 +31,28 @@ fn eval_ast(s: LispValue, env: &HashMap<String, LispValue>) -> LispResult {
     }
 }
 
-fn eval(s: LispValue, env: &HashMap<String, LispValue>) -> LispResult {
+fn eval(s: LispValue, env: Environment) -> LispResult {
     match *s {
         LispType::List(ref v) => {
             if v.len() == 0 {
                 return Ok(s.clone());
             }
-            let evaluated = eval_ast(s.clone(), env)?;
+            match *v[0] {
+                LispType::Symbol(ref sym) if sym == "def!" => {
+                    if v.len() != 3 {
+                        return Err("Wrong arity of 'def!'".to_owned());
+                    }
+                    if let LispType::Symbol(ref s) = *v[1] {
+                        let val = eval(v[2].clone(), env.clone())?;
+                        env.borrow_mut().set(s.clone(), val.clone());
+                        return Ok(val.clone())
+                    } else {
+                        return Err("First arg of 'def!' should be symbol".to_owned());
+                    }
+                },
+                _ => {},
+            }
+            let evaluated = eval_ast(s.clone(), env.clone())?;
             match *evaluated {
                 LispType::List(ref v) => {
                     let f = match *v[0].clone() {
@@ -76,7 +86,7 @@ fn main() {
             Ok(line) => {
                 rl.add_history_entry(&line);
                 match read(line) {
-                    Ok(value) => print(eval(value, &environment)),
+                    Ok(value) => print(eval(value, environment.clone())),
                     Err(e) => println!("Read error: {}", &e),
                 }
             },

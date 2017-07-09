@@ -1,8 +1,8 @@
 extern crate rustyline;
 use rustyline::Editor;
 
-extern crate mylisp;
-use mylisp::*;
+extern crate selfish;
+use selfish::*;
 
 
 use std::rc::Rc;

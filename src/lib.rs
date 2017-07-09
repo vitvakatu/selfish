@@ -21,6 +21,7 @@ pub type LispList = Vec<LispValue>;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum LispType {
+    Atom(RefCell<LispValue>),
     Int(isize),
     Symbol(String),
     Str(String),
@@ -67,6 +68,10 @@ impl LispValue {
     value_constructor!(list (LispList) = LispType::List);
     value_constructor!(vector (LispList) = LispType::Vector);
     value_constructor!(func (LispFunction) = LispType::Func);
+
+    pub fn atom(v: LispValue) -> Self {
+        LispValue(Rc::new(LispType::Atom(RefCell::new(v))))
+    }
 
     pub fn map(v: HashMap<String, LispValue>) -> Self {
         LispValue(Rc::new(LispType::Map(v)))
@@ -156,6 +161,7 @@ fn print_str(ast: LispValue, pretty: bool) -> String {
         LispType::Func(_) => "#<function>".to_owned(),
         LispType::Closure(_) => "#<closure>".to_owned(),
         LispType::Nothing => "".to_owned(),
+        LispType::Atom(ref v) => format!("atom<{}>", &print_str(v.borrow().clone(), pretty)),
     }
 }
 

@@ -222,6 +222,80 @@ fn internal_slurp(args: LispList) -> LispResult {
     }
 }
 
+pub fn internal_atom(args: LispList) -> LispResult {
+    if args.len() != 1 {
+        return Err("Invalid arity of 'atom' function".to_owned());
+    }
+    let t = args[0].clone();
+    Ok(LispValue::atom(t))
+}
+
+pub fn internal_atomq(args: LispList) -> LispResult {
+    if args.len() != 1 {
+        return Err("Invalid arity of 'atom?' function".to_owned());
+    }
+    if let LispType::Atom(_) = **args[0] {
+        Ok(LispValue::boolean(true))
+    } else {
+        Ok(LispValue::boolean(false))
+    }
+}
+
+pub fn internal_deref(args: LispList) -> LispResult {
+    if args.len() != 1 {
+        return Err("Invalid arity of 'deref' function".to_owned());
+    }
+    if let LispType::Atom(ref v) = **args[0] {
+        Ok(v.borrow().clone())
+    } else {
+        Err("Invalid argument of 'deref' function (should be atom)".to_owned())
+    }
+}
+
+pub fn internal_reset(args: LispList) -> LispResult {
+    if args.len() != 2 {
+        return Err("Invalid arity of 'reset!' function".to_owned());
+    }
+    if let LispType::Atom(ref v) = **args[0] {
+        *v.borrow_mut() = args[1].clone();
+        Ok(v.borrow().clone())
+    } else {
+        Err("Invalid arguments of 'reset!' function (should be atom and any)".to_owned())
+    }
+}
+
+pub fn internal_swap(args: LispList) -> LispResult {
+    if args.len() < 2 {
+        return Err("Invalid arity of 'swap!' function".to_owned());
+    }
+    let mut func_args = args[2..].to_vec();
+    if let LispType::Atom(ref v) = **args[0] {
+        let val = v.borrow().clone();
+        func_args.insert(0, val);
+        match **args[1].clone() {
+            LispType::Closure(ref closure) => {
+                let new_env = EnvironmentStruct::with_bindings(
+                    Some(closure.env.clone()),
+                    closure.binds.clone(),
+                    func_args
+                );
+                use eval::eval;
+                let new_val = eval(closure.body.clone(), new_env.clone())?;
+                *v.borrow_mut() = new_val.clone();
+                Ok(new_val)
+            },
+            LispType::Func(func) => {
+                let new_val = func(func_args)?;
+                *v.borrow_mut() = new_val.clone();
+                Ok(new_val)
+            }
+            _ => Err("Invalid argument: Not a closure or function".to_owned())
+        }
+    } else {
+        Err("Not atom".to_owned())
+    }
+}
+
 pub fn standart_environment() -> Environment {
     let result = EnvironmentStruct::new(None);
     {
@@ -246,6 +320,12 @@ pub fn standart_environment() -> Environment {
 
         r.set("read-string".to_owned(), LispValue::func(internal_read_string));
         r.set("slurp".to_owned(), LispValue::func(internal_slurp));
+
+        r.set("atom".to_owned(), LispValue::func(internal_atom));
+        r.set("atom?".to_owned(), LispValue::func(internal_atomq));
+        r.set("deref".to_owned(), LispValue::func(internal_deref));
+        r.set("reset!".to_owned(), LispValue::func(internal_reset));
+        r.set("swap!".to_owned(), LispValue::func(internal_swap));
     }
     result
 }

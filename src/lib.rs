@@ -7,8 +7,10 @@ use std::rc::Rc;
 
 mod core;
 mod reader;
+mod eval;
 
 pub use reader::Reader;
+pub use eval::eval;
 
 pub use core::standart_environment;
 

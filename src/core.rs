@@ -194,6 +194,18 @@ fn internal_ge(args: LispList) -> LispResult {
     construct_cmp!(args, ge, ">=")
 }
 
+fn internal_read_string(args: LispList) -> LispResult {
+    use Reader;
+    if args.len() != 1 {
+        return Err("Invalid arity of 'read-string' function".to_owned());
+    }
+    if let LispType::Str(ref s) = **args[0] {
+        Reader::read(s.as_bytes())
+    } else {
+        Err("Invalid argument of 'read-string' function (should be string)".to_owned())
+    }
+}
+
 pub fn standart_environment() -> Environment {
     let result = EnvironmentStruct::new(None);
     {
@@ -215,6 +227,8 @@ pub fn standart_environment() -> Environment {
         r.set("<".to_owned(), LispValue::func(internal_lt));
         r.set(">=".to_owned(), LispValue::func(internal_ge));
         r.set(">".to_owned(), LispValue::func(internal_gt));
+
+        r.set("read-string".to_owned(), LispValue::func(internal_read_string));
     }
     result
 }

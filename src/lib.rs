@@ -10,8 +10,11 @@ use std::str::FromStr;
 use std::collections::HashMap;
 use std::cell::RefCell;
 
-pub type LispValue = Rc<LispType>;
+#[derive(Clone, Debug, PartialEq)]
+pub struct LispValue(Rc<LispType>);
+
 pub type LispList = Vec<LispValue>;
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum LispType {
     Int(isize),
@@ -28,6 +31,60 @@ pub enum LispType {
     Nothing,
 }
 
+impl std::ops::Deref for LispValue {
+    type Target = Rc<LispType>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+macro_rules! value_constructor {
+    ($name:ident ($t:ident) = $repr:expr) => (
+        pub fn $name(v: $t) -> Self {
+            LispValue(Rc::new($repr(v)))
+        }
+    )
+}
+
+type LispFunction = fn(LispList) -> LispResult;
+
+impl LispValue {
+
+    pub fn new(v: LispType) -> Self {
+        LispValue(Rc::new(v))
+    }
+
+    value_constructor!(int (isize) = LispType::Int);
+    value_constructor!(float (f64) = LispType::Float);
+    value_constructor!(boolean (bool) = LispType::Boolean);
+    value_constructor!(symbol (String) = LispType::Symbol);
+    value_constructor!(string (String) = LispType::Str);
+    value_constructor!(keyword (String) = LispType::Keyword);
+    value_constructor!(list (LispList) = LispType::List);
+    value_constructor!(vector (LispList) = LispType::Vector);
+    value_constructor!(func (LispFunction) = LispType::Func);
+
+    pub fn map(v: HashMap<String, LispValue>) -> Self {
+        LispValue(Rc::new(LispType::Map(v)))
+    }
+
+    pub fn nothing() -> Self {
+        LispValue(Rc::new(LispType::Nothing))
+    }
+
+    pub fn closure(binds: Vec<String>, body: LispValue, env: Environment) -> Self {
+        LispValue(Rc::new(
+            LispType::Closure(
+                LispClosure {
+                    binds,
+                    body,
+                    env,
+                }
+            )
+        ))
+    }
+}
+
 pub type LispResult = Result<LispValue, String>;
 
 #[derive(Clone)]
@@ -35,7 +92,6 @@ pub struct LispClosure {
     pub binds: Vec<String>,
     pub body: LispValue,
     pub env: Environment,
-    //pub func: Rc<Fn(LispList) -> LispResult>,
 }
 
 impl PartialEq for LispClosure {
@@ -151,7 +207,7 @@ named!(list<&[u8], LispType>,
     |v| {
         let mut result = Vec::new();
         for e in v {
-            result.push(Rc::new(e));
+            result.push(LispValue::new(e));
         }
         LispType::List(result)
     })
@@ -166,7 +222,7 @@ named!(vector<&[u8], LispType>,
     |v| {
         let mut result = Vec::new();
         for e in v {
-            result.push(Rc::new(e));
+            result.push(LispValue::new(e));
         }
         LispType::Vector(result)
     })
@@ -181,7 +237,7 @@ named!(hash_map<LispType>,
     |v| {
         let mut result = HashMap::new();
         for e in v {
-            result.insert(e.0, Rc::new(e.1));
+            result.insert(e.0, LispValue::new(e.1));
         }
         LispType::Map(result)
     })
@@ -197,14 +253,14 @@ pub struct Reader {
 impl Reader {
     pub fn read(slice: &[u8]) -> LispResult {
         match expression(slice) {
-            IResult::Done(_, result) => Ok(Rc::new(result)),
+            IResult::Done(_, result) => Ok(LispValue::new(result)),
             _ => Err("Something gone wrong...".to_owned()),
         }
     }
 }
 
 fn print_str(ast: LispValue) -> String {
-    match *ast {
+    match **ast {
         LispType::Boolean(ref v) => v.to_string(),
         LispType::Float(ref v) => v.to_string(),
         LispType::Int(ref v) => v.to_string(),
@@ -261,18 +317,18 @@ macro_rules! arithmetic_function {
             let err = Err("Invalid types: arithmetic operations works \
                         with ints and floats only".to_owned());
             if input.len() == 0 {
-                return Ok(Rc::new(LispType::Int(0)));
+                return Ok(LispValue::int(0));
             }
             if input.len() == 1 {
                 return Ok(input[0].clone());
             }
-            let mut result = match *input[0] {
+            let mut result = match **input[0] {
                 LispType::Int(v) => LispType::Int(v),
                 LispType::Float(v) => LispType::Float(v),
                 _ => return err,
             };
             for e in &input[1..] {
-                match **e {
+                match ***e {
                     LispType::Int(i) => {
                         result = match result {
                             LispType::Int(v) => LispType::Int($op(v, i)),
@@ -290,7 +346,7 @@ macro_rules! arithmetic_function {
                     _ => return err,
                 }
             }
-            Ok(Rc::new(result.clone()))
+            Ok(LispValue::new(result.clone()))
         }
     )
 }
@@ -366,7 +422,7 @@ fn internal_print(args: LispList) -> LispResult {
         return Err("Invalid arity of 'print' function".to_owned());
     }
     println!("{}", &Writer::print(args[0].clone()));
-    Ok(Rc::new(LispType::Nothing))
+    Ok(LispValue::nothing())
 }
 
 fn internal_list(args: LispList) -> LispResult {
@@ -374,17 +430,17 @@ fn internal_list(args: LispList) -> LispResult {
     for e in args {
         result.push(e.clone());
     }
-    Ok(Rc::new(LispType::List(result)))
+    Ok(LispValue::list(result))
 }
 
 fn internal_listq(args: LispList) -> LispResult {
     if args.len() != 1 {
         return Err("Invalid arity of 'list?' function".to_owned());
     }
-    if let LispType::List(_) = *args[0] {
-        Ok(Rc::new(LispType::Boolean(true)))
+    if let LispType::List(_) = **args[0] {
+        Ok(LispValue::boolean(true))
     } else {
-        Ok(Rc::new(LispType::Boolean(false)))
+        Ok(LispValue::boolean(false))
     }
 }
 
@@ -392,14 +448,14 @@ pub fn standart_environment() -> Environment {
     let result = EnvironmentStruct::new(None);
     {
         let mut r = result.borrow_mut();
-        r.set("+".to_owned(), Rc::new(LispType::Func(add)));
-        r.set("-".to_owned(), Rc::new(LispType::Func(sub)));
-        r.set("*".to_owned(), Rc::new(LispType::Func(mult)));
-        r.set("/".to_owned(), Rc::new(LispType::Func(div)));
+        r.set("+".to_owned(), LispValue::func(add));
+        r.set("-".to_owned(), LispValue::func(sub));
+        r.set("*".to_owned(), LispValue::func(mult));
+        r.set("/".to_owned(), LispValue::func(div));
 
-        r.set("print".to_owned(), Rc::new(LispType::Func(internal_print)));
-        r.set("list".to_owned(), Rc::new(LispType::Func(internal_list)));
-        r.set("list?".to_owned(), Rc::new(LispType::Func(internal_listq)));
+        r.set("print".to_owned(), LispValue::func(internal_print));
+        r.set("list".to_owned(), LispValue::func(internal_list));
+        r.set("list?".to_owned(), LispValue::func(internal_listq));
     }
     result
 }

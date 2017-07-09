@@ -444,6 +444,111 @@ fn internal_listq(args: LispList) -> LispResult {
     }
 }
 
+fn internal_emptyq(args: LispList) -> LispResult {
+    if args.len() != 1 {
+        return Err("Invalid arity of 'empty?' function".to_owned());
+    }
+    match **args[0] {
+        LispType::List(ref v) | LispType::Vector(ref v) => {
+            if v.len() == 0 {
+                Ok(LispValue::boolean(true))
+            } else {
+                Ok(LispValue::boolean(false))
+            }
+        },
+        _ => Err("Invalid argument of 'empty?' function (must be the list or vector)".to_owned()),
+    }
+}
+
+fn internal_count(args: LispList) -> LispResult {
+    if args.len() != 1 {
+        return Err("Invalid arity of 'count' function".to_owned());
+    }
+    match **args[0] {
+        LispType::List(ref v) | LispType::Vector(ref v) => {
+            Ok(LispValue::int(v.len() as isize))
+        },
+        _ => Err("Invalid argument of 'count' function (must be the list or vector)".to_owned()),
+    }
+}
+
+fn internal_eq(args: LispList) -> LispResult {
+    if args.len() != 2 {
+        return Err("Invalid arity of '=' function".to_owned());
+    }
+    if **args[0] == **args[1] {
+        Ok(LispValue::boolean(true))
+    } else {
+        Ok(LispValue::boolean(false))
+    }
+}
+
+macro_rules! construct_cmp {
+    ($args:ident, $func:ident, $func_name:expr) => (
+        match **$args[0] {
+            LispType::Int(fst) => {
+                match **$args[1] {
+                    LispType::Float(snd) => if (fst as f64).$func(&snd) {
+                        Ok(LispValue::boolean(true))
+                    } else {
+                        Ok(LispValue::boolean(false))
+                    },
+                    LispType::Int(snd) => if fst.$func(&snd) {
+                        Ok(LispValue::boolean(true))
+                    } else {
+                        Ok(LispValue::boolean(false))
+                    },
+                    _ => Err(format!("Invalid arguments of '{}' function", $func_name))
+                }
+            },
+            LispType::Float(fst) => {
+                match **$args[1] {
+                    LispType::Float(snd) => if fst.$func(&snd) {
+                        Ok(LispValue::boolean(true))
+                    } else {
+                        Ok(LispValue::boolean(false))
+                    },
+                    LispType::Int(snd) => if fst.$func(&(snd as f64)) {
+                        Ok(LispValue::boolean(true))
+                    } else {
+                        Ok(LispValue::boolean(false))
+                    },
+                    _ => Err(format!("Invalid arguments of '{}' function", $func_name))
+                }
+            },
+            _ => Err(format!("Invalid arguments of '{}' function", $func_name))
+        }
+    )
+}
+
+fn internal_lt(args: LispList) -> LispResult {
+    if args.len() != 2 {
+        return Err("Invalid arity of '<' function".to_owned());
+    }
+    construct_cmp!(args, lt, "<")
+}
+
+fn internal_le(args: LispList) -> LispResult {
+    if args.len() != 2 {
+        return Err("Invalid arity of '<=' function".to_owned());
+    }
+    construct_cmp!(args, le, "<=")
+}
+
+fn internal_gt(args: LispList) -> LispResult {
+    if args.len() != 2 {
+        return Err("Invalid arity of '>' function".to_owned());
+    }
+    construct_cmp!(args, gt, ">")
+}
+
+fn internal_ge(args: LispList) -> LispResult {
+    if args.len() != 2 {
+        return Err("Invalid arity of '>=' function".to_owned());
+    }
+    construct_cmp!(args, ge, ">=")
+}
+
 pub fn standart_environment() -> Environment {
     let result = EnvironmentStruct::new(None);
     {
@@ -456,6 +561,13 @@ pub fn standart_environment() -> Environment {
         r.set("print".to_owned(), LispValue::func(internal_print));
         r.set("list".to_owned(), LispValue::func(internal_list));
         r.set("list?".to_owned(), LispValue::func(internal_listq));
+        r.set("empty?".to_owned(), LispValue::func(internal_emptyq));
+        r.set("count".to_owned(), LispValue::func(internal_count));
+        r.set("=".to_owned(), LispValue::func(internal_eq));
+        r.set("<=".to_owned(), LispValue::func(internal_le));
+        r.set("<".to_owned(), LispValue::func(internal_lt));
+        r.set(">=".to_owned(), LispValue::func(internal_ge));
+        r.set(">".to_owned(), LispValue::func(internal_gt));
     }
     result
 }

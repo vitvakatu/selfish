@@ -14,12 +14,19 @@ fn read(s: String) -> LispResult {
 fn eval_ast(s: LispValue, env: Environment) -> LispResult {
     match *s {
         LispType::Symbol(ref k) => env.borrow().get(k.clone()),
-        LispType::List(ref v) | LispType::Vector(ref v) => {
+        LispType::List(ref v) => {
             let mut result = Vec::new();
             for e in v {
                 result.push(eval(e.clone(), env.clone())?);
             }
             Ok(Rc::new(LispType::List(result)))
+        },
+        LispType::Vector(ref v) => {
+            let mut result = Vec::new();
+            for e in v {
+                result.push(eval(e.clone(), env.clone())?);
+            }
+            Ok(Rc::new(LispType::Vector(result)))
         },
         LispType::Map(ref m) => {
             let mut result = m.clone();

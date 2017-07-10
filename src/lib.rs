@@ -88,6 +88,18 @@ impl LispValue {
                     binds,
                     body,
                     env,
+                    is_macro: false,
+                }
+            )
+        ))
+    }
+
+    pub fn macros(closure: LispClosure) -> Self {
+        LispValue(Rc::new(
+            LispType::Closure(
+                LispClosure {
+                    is_macro: true,
+                    .. closure
                 }
             )
         ))
@@ -101,6 +113,7 @@ pub struct LispClosure {
     pub binds: Vec<String>,
     pub body: LispValue,
     pub env: Environment,
+    pub is_macro: bool,
 }
 
 impl PartialEq for LispClosure {

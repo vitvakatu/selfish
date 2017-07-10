@@ -47,7 +47,7 @@ named!(number<LispType>,
 );
 
 named!(symbol<String>,
-    map!(many1!(none_of!("[](){}\"\t\n\r ")),
+    map!(many1!(none_of!("'`~@[](){}\"\t\n\r ")),
     |v| {
         v.into_iter().collect()
     })
@@ -72,7 +72,7 @@ named!(atom<&[u8], LispType>,
 named!(list<&[u8], LispType>,
     map!(delimited!(
         char!('('),
-        many0!(ws!(alt!(atom | list | vector | hash_map))),
+        many0!(ws!(expression)),
         char!(')')
     ),
     |v| {
@@ -87,7 +87,7 @@ named!(list<&[u8], LispType>,
 named!(vector<&[u8], LispType>,
     map!(delimited!(
         char!('['),
-        many0!(ws!(alt!(atom | list | vector | hash_map))),
+        many0!(ws!(expression)),
         char!(']')
     ),
     |v| {
@@ -102,7 +102,7 @@ named!(vector<&[u8], LispType>,
 named!(hash_map<LispType>,
     map!(delimited!(
         char!('{'),
-        many0!(ws!(pair!(keyword, alt!(atom | list | vector | hash_map)))),
+        many0!(ws!(pair!(keyword, expression))),
         char!('}')
     ),
     |v| {
@@ -115,7 +115,28 @@ named!(hash_map<LispType>,
 );
 
 named!(expression<&[u8], LispType>,
-    alt!(atom | list | vector | hash_map)
+    map!(pair!(
+        many0!(alt_complete!(
+            tag!("'") => { |_| LispType::Symbol("quote".into()) } |
+            tag!("@") => { |_| LispType::Symbol("deref".into()) } |
+            tag!("`") => { |_| LispType::Symbol("quasiquote".into()) } |
+            tag!("~@") => { |_| LispType::Symbol("splice-unquote".into()) } |
+            tag!("~") => { |_| LispType::Symbol("unquote".into()) }
+        )),
+        alt!(atom | list | vector | hash_map)
+    ),
+    |(mut mac, expr)| {
+        if mac.len() != 0 {
+            let mut result = expr;
+            mac.reverse();
+            for e in mac {
+                result = LispType::List(vec![LispValue::new(e), LispValue::new(result)]);
+            }
+            result
+        } else {
+            expr
+        }
+    })
 );
 
 pub struct Reader {

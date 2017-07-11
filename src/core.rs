@@ -354,5 +354,14 @@ pub fn standart_environment() -> Environment {
         r.set("cons".to_owned(), LispValue::func(internal_cons));
         r.set("concat".to_owned(), LispValue::func(internal_concat));
     }
+    let load_file = "(def! load-file (fn (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))".into();
+    read_eval(load_file, result.clone()).unwrap();
     result
+}
+
+pub fn read_eval(s: String, env: Environment) -> LispResult {
+    use Reader;
+    use eval::eval;
+    let ast = Reader::read(s.as_bytes())?;
+    eval(ast, env)
 }

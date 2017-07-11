@@ -15,29 +15,29 @@ pub use core::read_eval;
 pub use core::standart_environment;
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct LispValue(Rc<LispType>);
+pub struct Value(Rc<Type>);
 
-pub type LispList = Vec<LispValue>;
+pub type List = Vec<Value>;
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum LispType {
-    Atom(RefCell<LispValue>),
+pub enum Type {
+    Atom(RefCell<Value>),
     Int(isize),
     Symbol(String),
     Str(String),
     Keyword(String),
     Boolean(bool),
     Float(f64),
-    List(LispList),
-    Vector(LispList),
-    Map(HashMap<String, LispValue>),
-    Func(fn(LispList) -> LispResult),
-    Closure(LispClosure),
+    List(List),
+    Vector(List),
+    Map(HashMap<String, Value>),
+    Func(fn(List) -> LispResult),
+    Closure(Closure),
     Nothing,
 }
 
-impl std::ops::Deref for LispValue {
-    type Target = Rc<LispType>;
+impl std::ops::Deref for Value {
+    type Target = Rc<Type>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -46,45 +46,45 @@ impl std::ops::Deref for LispValue {
 macro_rules! value_constructor {
     ($name:ident ($t:ident) = $repr:expr) => (
         pub fn $name(v: $t) -> Self {
-            LispValue(Rc::new($repr(v)))
+            Value(Rc::new($repr(v)))
         }
     )
 }
 
-type LispFunction = fn(LispList) -> LispResult;
+type Function = fn(List) -> LispResult;
 
-impl LispValue {
+impl Value {
 
-    pub fn new(v: LispType) -> Self {
-        LispValue(Rc::new(v))
+    pub fn new(v: Type) -> Self {
+        Value(Rc::new(v))
     }
 
-    value_constructor!(int (isize) = LispType::Int);
-    value_constructor!(float (f64) = LispType::Float);
-    value_constructor!(boolean (bool) = LispType::Boolean);
-    value_constructor!(symbol (String) = LispType::Symbol);
-    value_constructor!(string (String) = LispType::Str);
-    value_constructor!(keyword (String) = LispType::Keyword);
-    value_constructor!(list (LispList) = LispType::List);
-    value_constructor!(vector (LispList) = LispType::Vector);
-    value_constructor!(func (LispFunction) = LispType::Func);
+    value_constructor!(int (isize) = Type::Int);
+    value_constructor!(float (f64) = Type::Float);
+    value_constructor!(boolean (bool) = Type::Boolean);
+    value_constructor!(symbol (String) = Type::Symbol);
+    value_constructor!(string (String) = Type::Str);
+    value_constructor!(keyword (String) = Type::Keyword);
+    value_constructor!(list (List) = Type::List);
+    value_constructor!(vector (List) = Type::Vector);
+    value_constructor!(func (Function) = Type::Func);
 
-    pub fn atom(v: LispValue) -> Self {
-        LispValue(Rc::new(LispType::Atom(RefCell::new(v))))
+    pub fn atom(v: Value) -> Self {
+        Value(Rc::new(Type::Atom(RefCell::new(v))))
     }
 
-    pub fn map(v: HashMap<String, LispValue>) -> Self {
-        LispValue(Rc::new(LispType::Map(v)))
+    pub fn map(v: HashMap<String, Value>) -> Self {
+        Value(Rc::new(Type::Map(v)))
     }
 
     pub fn nothing() -> Self {
-        LispValue(Rc::new(LispType::Nothing))
+        Value(Rc::new(Type::Nothing))
     }
 
-    pub fn closure(binds: Vec<String>, body: LispValue, env: Environment) -> Self {
-        LispValue(Rc::new(
-            LispType::Closure(
-                LispClosure {
+    pub fn closure(binds: Vec<String>, body: Value, env: Environment) -> Self {
+        Value(Rc::new(
+            Type::Closure(
+                Closure {
                     binds,
                     body,
                     env,
@@ -94,10 +94,10 @@ impl LispValue {
         ))
     }
 
-    pub fn macros(closure: LispClosure) -> Self {
-        LispValue(Rc::new(
-            LispType::Closure(
-                LispClosure {
+    pub fn macros(closure: Closure) -> Self {
+        Value(Rc::new(
+            Type::Closure(
+                Closure {
                     is_macro: true,
                     .. closure
                 }
@@ -106,34 +106,44 @@ impl LispValue {
     }
 }
 
-pub type LispResult = Result<LispValue, String>;
+pub type LispResult = Result<Value, Error>;
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Error {
+    InvalidArg(&'static str, &'static str),
+    InvalidArity(&'static str, &'static str),
+    ParseError(String),
+    Incomplete,
+    Custom(String),
+    Value(Value),
+}
 
 #[derive(Clone)]
-pub struct LispClosure {
+pub struct Closure {
     pub binds: Vec<String>,
-    pub body: LispValue,
+    pub body: Value,
     pub env: Environment,
     pub is_macro: bool,
 }
 
-impl PartialEq for LispClosure {
-    fn eq(&self, _: &LispClosure) -> bool {
+impl PartialEq for Closure {
+    fn eq(&self, _: &Closure) -> bool {
         false
     }
 }
 
-impl std::fmt::Debug for LispClosure {
+impl std::fmt::Debug for Closure {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "LispClosure")
+        write!(f, "Closure")
     }
 }
 
-fn print_str(ast: LispValue, pretty: bool) -> String {
+fn print_str(ast: Value, pretty: bool) -> String {
     match **ast {
-        LispType::Boolean(ref v) => v.to_string(),
-        LispType::Float(ref v) => v.to_string(),
-        LispType::Int(ref v) => v.to_string(),
-        LispType::List(ref v) => {
+        Type::Boolean(ref v) => v.to_string(),
+        Type::Float(ref v) => v.to_string(),
+        Type::Int(ref v) => v.to_string(),
+        Type::List(ref v) => {
             let mut result = String::new();
             for (i, e) in v.iter().enumerate() {
                 result.push_str(&print_str(e.clone(), pretty));
@@ -143,7 +153,7 @@ fn print_str(ast: LispValue, pretty: bool) -> String {
             }
             format!("({})", &result)
         },
-        LispType::Vector(ref v) => {
+        Type::Vector(ref v) => {
             let mut result = String::new();
             for (i, e) in v.iter().enumerate() {
                 result.push_str(&print_str(e.clone(), pretty));
@@ -153,7 +163,7 @@ fn print_str(ast: LispValue, pretty: bool) -> String {
             }
             format!("[{}]", &result)
         },
-        LispType::Map(ref v) => {
+        Type::Map(ref v) => {
             let mut result = String::new();
             for (i, (key, value)) in v.iter().enumerate() {
                 result.push_str(&format!(":{} {}", &key,
@@ -164,17 +174,17 @@ fn print_str(ast: LispValue, pretty: bool) -> String {
             }
             format!("{{{}}}", &result)
         },
-        LispType::Str(ref v) => if pretty {
+        Type::Str(ref v) => if pretty {
             format!("{}", v)
         } else {
             format!("\"{}\"", v)
         },
-        LispType::Symbol(ref v) => v.clone(),
-        LispType::Keyword(ref v) => format!(":{}", v),
-        LispType::Func(_) => "#<function>".to_owned(),
-        LispType::Closure(_) => "#<closure>".to_owned(),
-        LispType::Nothing => "".to_owned(),
-        LispType::Atom(ref v) => format!("atom<{}>", &print_str(v.borrow().clone(), pretty)),
+        Type::Symbol(ref v) => v.clone(),
+        Type::Keyword(ref v) => format!(":{}", v),
+        Type::Func(_) => "#<function>".to_owned(),
+        Type::Closure(_) => "#<closure>".to_owned(),
+        Type::Nothing => "".to_owned(),
+        Type::Atom(ref v) => format!("atom<{}>", &print_str(v.borrow().clone(), pretty)),
     }
 }
 
@@ -182,7 +192,7 @@ pub struct Writer {
 }
 
 impl Writer {
-    pub fn print(ast: LispValue, pretty: bool) -> String {
+    pub fn print(ast: Value, pretty: bool) -> String {
         print_str(ast, pretty)
     }
 }
@@ -191,7 +201,7 @@ pub type Environment = Rc<RefCell<EnvironmentStruct>>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct EnvironmentStruct {
-    data: HashMap<String, LispValue>,
+    data: HashMap<String, Value>,
     outer: Option<Environment>,
 }
 
@@ -212,7 +222,7 @@ impl EnvironmentStruct {
 
     pub fn with_bindings(outer: Option<Environment>,
                          binds: Vec<String>,
-                         exprs: Vec<LispValue>) -> Environment {
+                         exprs: Vec<Value>) -> Environment {
         let mut result = EnvironmentStruct {
             data: HashMap::new(),
             outer: outer,
@@ -223,7 +233,7 @@ impl EnvironmentStruct {
         Rc::new(RefCell::new(result))
     }
 
-    pub fn set(&mut self, key: String, val: LispValue) {
+    pub fn set(&mut self, key: String, val: Value) {
         self.data.insert(key, val);
     }
 
@@ -248,7 +258,7 @@ impl EnvironmentStruct {
                 if let Some(env) = self.find(key.clone()) {
                     env.borrow().get(key)
                 } else {
-                    Err(format!("No value with name '{}' in the current scope", &key))
+                    Err(Error::Custom(format!("No value with name '{}' in the current scope", &key)))
                 }
             },
         }
@@ -260,47 +270,47 @@ mod tests {
     use ::*;
     #[test]
     fn atoms() {
-        assert_eq!(atom(&b"true"[..]), IResult::Done(&b""[..], LispType::Boolean(true)));
-        assert_eq!(atom(&b"false"[..]), IResult::Done(&b""[..], LispType::Boolean(false)));
-        assert_eq!(atom(&b"function"[..]), IResult::Done(&b""[..], LispType::Symbol("function".to_owned())));
-        assert_eq!(atom(&b":keyword"[..]), IResult::Done(&b""[..], LispType::Keyword("keyword".to_owned())));
+        assert_eq!(atom(&b"true"[..]), IResult::Done(&b""[..], Type::Boolean(true)));
+        assert_eq!(atom(&b"false"[..]), IResult::Done(&b""[..], Type::Boolean(false)));
+        assert_eq!(atom(&b"function"[..]), IResult::Done(&b""[..], Type::Symbol("function".to_owned())));
+        assert_eq!(atom(&b":keyword"[..]), IResult::Done(&b""[..], Type::Keyword("keyword".to_owned())));
     }
 
     #[test]
     fn numbers() {
-        assert_eq!(atom(&b"32"[..]), IResult::Done(&b""[..], LispType::Int(32)));
-        assert_eq!(atom(&b"-32321"[..]), IResult::Done(&b""[..], LispType::Int(-32321)));
+        assert_eq!(atom(&b"32"[..]), IResult::Done(&b""[..], Type::Int(32)));
+        assert_eq!(atom(&b"-32321"[..]), IResult::Done(&b""[..], Type::Int(-32321)));
     }
 
     #[test]
     fn floats() {
-        assert_eq!(atom(&b"1.3"[..]), IResult::Done(&b""[..], LispType::Float(1.3)));
+        assert_eq!(atom(&b"1.3"[..]), IResult::Done(&b""[..], Type::Float(1.3)));
     }
 
     #[test]
     fn strings() {
         assert_eq!(atom(&b"\"some string\""[..]), IResult::Done(&b""[..],
-        LispType::Str("some string".to_owned())));
+        Type::Str("some string".to_owned())));
         assert_eq!(atom(&b"\"some \\\"escaped\\\" string\""[..]), IResult::Done(&b""[..],
-        LispType::Str("some \"escaped\" string".to_owned())));
+        Type::Str("some \"escaped\" string".to_owned())));
     }
 
     #[test]
     fn lists() {
-        let list1 = LispType::List(vec![
-            Rc::new(LispType::Symbol("somesymbol".to_owned())),
-            Rc::new(LispType::Int(11)),
-            Rc::new(LispType::Boolean(true)),
-            Rc::new(LispType::Float(1.3)),
-            Rc::new(LispType::Int(10231)),
-            Rc::new(LispType::Int(-30)),
-            Rc::new(LispType::Str("some string".to_owned())),
+        let list1 = Type::List(vec![
+            Rc::new(Type::Symbol("somesymbol".to_owned())),
+            Rc::new(Type::Int(11)),
+            Rc::new(Type::Boolean(true)),
+            Rc::new(Type::Float(1.3)),
+            Rc::new(Type::Int(10231)),
+            Rc::new(Type::Int(-30)),
+            Rc::new(Type::Str("some string".to_owned())),
         ]);
         assert_eq!(list(&b"(somesymbol 11 true 1.3 10231 -30 \"some string\")"[..]),
         IResult::Done(&b""[..], list1.clone()));
-        let list2 = LispType::List(vec![
+        let list2 = Type::List(vec![
             Rc::new(list1),
-            Rc::new(LispType::Symbol("somesymbol".to_owned())),
+            Rc::new(Type::Symbol("somesymbol".to_owned())),
         ]);
         assert_eq!(list(&b"((somesymbol 11 true 1.3 10231 -30 \"some string\") somesymbol)"[..]),
         IResult::Done(&b""[..], list2));
@@ -308,20 +318,20 @@ mod tests {
 
     #[test]
     fn vectors() {
-        let vector1 = LispType::Vector(vec![
-            Rc::new(LispType::Symbol("somesymbol".to_owned())),
-            Rc::new(LispType::Int(11)),
-            Rc::new(LispType::Boolean(true)),
-            Rc::new(LispType::Float(1.3)),
-            Rc::new(LispType::Int(10231)),
-            Rc::new(LispType::Int(-30)),
-            Rc::new(LispType::Str("some string".to_owned())),
+        let vector1 = Type::Vector(vec![
+            Rc::new(Type::Symbol("somesymbol".to_owned())),
+            Rc::new(Type::Int(11)),
+            Rc::new(Type::Boolean(true)),
+            Rc::new(Type::Float(1.3)),
+            Rc::new(Type::Int(10231)),
+            Rc::new(Type::Int(-30)),
+            Rc::new(Type::Str("some string".to_owned())),
         ]);
         assert_eq!(vector(&b"[somesymbol 11 true 1.3 10231 -30 \"some string\"]"[..]),
         IResult::Done(&b""[..], vector1.clone()));
-        let vector2 = LispType::Vector(vec![
+        let vector2 = Type::Vector(vec![
             Rc::new(vector1),
-            Rc::new(LispType::Symbol("somesymbol".to_owned())),
+            Rc::new(Type::Symbol("somesymbol".to_owned())),
         ]);
         assert_eq!(vector(&b"[[somesymbol 11 true 1.3 10231 -30 \"some string\"] somesymbol]"[..]),
         IResult::Done(&b""[..], vector2));

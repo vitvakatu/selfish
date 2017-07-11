@@ -3,7 +3,7 @@ use std::str;
 use std::str::FromStr;
 use std::collections::HashMap;
 
-use {LispType, LispResult, LispValue};
+use {Type, LispResult, Value};
 
 named!(string<&[u8], String>,
     delimited!(
@@ -40,9 +40,9 @@ named!(integer_number<&[u8], isize>,
     })
 );
 
-named!(number<LispType>,
-    alt_complete!(double => { |v| LispType::Float(v as f64) } |
-                  integer_number => { |v| LispType::Int(v as isize) }
+named!(number<Type>,
+    alt_complete!(double => { |v| Type::Float(v as f64) } |
+                  integer_number => { |v| Type::Int(v as isize) }
                   )
 );
 
@@ -60,16 +60,16 @@ named!(keyword<String>,
     )
 );
 
-named!(atom<&[u8], LispType>,
+named!(atom<&[u8], Type>,
     alt_complete!(number |
-                  tag!("true") => { |_| LispType::Boolean(true) } |
-                  tag!("false") => { |_| LispType::Boolean(false) } |
-                  keyword => { |v| LispType::Keyword(v) } |
-                  string => { |v| LispType::Str(v) } |
-                  symbol => { |v| LispType::Symbol(v) }
+                  tag!("true") => { |_| Type::Boolean(true) } |
+                  tag!("false") => { |_| Type::Boolean(false) } |
+                  keyword => { |v| Type::Keyword(v) } |
+                  string => { |v| Type::Str(v) } |
+                  symbol => { |v| Type::Symbol(v) }
 ));
 
-named!(list<&[u8], LispType>,
+named!(list<&[u8], Type>,
     map!(delimited!(
         char!('('),
         many0!(ws!(expression)),
@@ -78,13 +78,13 @@ named!(list<&[u8], LispType>,
     |v| {
         let mut result = Vec::new();
         for e in v {
-            result.push(LispValue::new(e));
+            result.push(Value::new(e));
         }
-        LispType::List(result)
+        Type::List(result)
     })
 );
 
-named!(vector<&[u8], LispType>,
+named!(vector<&[u8], Type>,
     map!(delimited!(
         char!('['),
         many0!(ws!(expression)),
@@ -93,13 +93,13 @@ named!(vector<&[u8], LispType>,
     |v| {
         let mut result = Vec::new();
         for e in v {
-            result.push(LispValue::new(e));
+            result.push(Value::new(e));
         }
-        LispType::Vector(result)
+        Type::Vector(result)
     })
 );
 
-named!(hash_map<LispType>,
+named!(hash_map<Type>,
     map!(delimited!(
         char!('{'),
         many0!(ws!(pair!(keyword, expression))),
@@ -108,20 +108,20 @@ named!(hash_map<LispType>,
     |v| {
         let mut result = HashMap::new();
         for e in v {
-            result.insert(e.0, LispValue::new(e.1));
+            result.insert(e.0, Value::new(e.1));
         }
-        LispType::Map(result)
+        Type::Map(result)
     })
 );
 
-named!(expression<&[u8], LispType>,
+named!(expression<&[u8], Type>,
     map!(pair!(
         many0!(alt_complete!(
-            tag!("'") => { |_| LispType::Symbol("quote".into()) } |
-            tag!("@") => { |_| LispType::Symbol("deref".into()) } |
-            tag!("`") => { |_| LispType::Symbol("quasiquote".into()) } |
-            tag!("~@") => { |_| LispType::Symbol("splice-unquote".into()) } |
-            tag!("~") => { |_| LispType::Symbol("unquote".into()) }
+            tag!("'") => { |_| Type::Symbol("quote".into()) } |
+            tag!("@") => { |_| Type::Symbol("deref".into()) } |
+            tag!("`") => { |_| Type::Symbol("quasiquote".into()) } |
+            tag!("~@") => { |_| Type::Symbol("splice-unquote".into()) } |
+            tag!("~") => { |_| Type::Symbol("unquote".into()) }
         )),
         alt!(atom | list | vector | hash_map)
     ),
@@ -130,7 +130,7 @@ named!(expression<&[u8], LispType>,
             let mut result = expr;
             mac.reverse();
             for e in mac {
-                result = LispType::List(vec![LispValue::new(e), LispValue::new(result)]);
+                result = Type::List(vec![Value::new(e), Value::new(result)]);
             }
             result
         } else {
@@ -139,18 +139,18 @@ named!(expression<&[u8], LispType>,
     })
 );
 
-named!(program<&[u8], LispValue>,
+named!(program<&[u8], Value>,
     map!(many1!(ws!(expression)),
     |exprs| {
         if exprs.len() > 1 {
-            let mut values: Vec<LispValue> = exprs
+            let mut values: Vec<Value> = exprs
                                                 .into_iter()
-                                                .map(LispValue::new)
+                                                .map(Value::new)
                                                 .collect();
-            values.insert(0, LispValue::symbol("do".into()));
-            LispValue::list(values)
+            values.insert(0, Value::symbol("do".into()));
+            Value::list(values)
         } else {
-            LispValue::new(exprs[0].clone())
+            Value::new(exprs[0].clone())
         }
     })
 );
@@ -160,9 +160,11 @@ pub struct Reader {
 
 impl Reader {
     pub fn read(slice: &[u8]) -> LispResult {
+        use Error;
         match program(slice) {
             IResult::Done(_, result) => Ok(result),
-            _ => Err("Something gone wrong...".to_owned()),
+            IResult::Error(e) => Err(Error::ParseError(format!("{}", e))),
+            IResult::Incomplete(_) => Err(Error::Incomplete),
         }
     }
 }

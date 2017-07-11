@@ -1,41 +1,41 @@
-use {LispList, LispResult, LispValue, LispType, Writer, Environment, EnvironmentStruct};
+use {List, LispResult, Error, Value, Type, Writer, Environment, EnvironmentStruct};
 
 macro_rules! arithmetic_function {
     ($name: ident, $op: expr, $finit:expr) => (
-        fn $name(input: LispList) -> LispResult {
-            let err = Err("Invalid types: arithmetic operations works \
-                        with ints and floats only".to_owned());
+        fn $name(input: List) -> LispResult {
+            let err = Err(Error::InvalidArg("arithmetic function",
+                "any amount of integer or floating point numbers"));
             if input.len() == 0 {
-                return Ok(LispValue::int(0));
+                return Ok(Value::int(0));
             }
             if input.len() == 1 {
                 return Ok(input[0].clone());
             }
             let mut result = match **input[0] {
-                LispType::Int(v) => LispType::Int(v),
-                LispType::Float(v) => LispType::Float(v),
+                Type::Int(v) => Type::Int(v),
+                Type::Float(v) => Type::Float(v),
                 _ => return err,
             };
             for e in &input[1..] {
                 match ***e {
-                    LispType::Int(i) => {
+                    Type::Int(i) => {
                         result = match result {
-                            LispType::Int(v) => LispType::Int($op(v, i)),
-                            LispType::Float(v) => LispType::Float($op(v, i as f64)),
+                            Type::Int(v) => Type::Int($op(v, i)),
+                            Type::Float(v) => Type::Float($op(v, i as f64)),
                             _ => unreachable!(),
                         };
                     },
-                    LispType::Float(f) => {
+                    Type::Float(f) => {
                         result = match result {
-                            LispType::Int(v) => LispType::Float($op(v as f64, f)),
-                            LispType::Float(v) => LispType::Float($op(v, f)),
+                            Type::Int(v) => Type::Float($op(v as f64, f)),
+                            Type::Float(v) => Type::Float($op(v, f)),
                             _ => unreachable!(),
                         };
                     },
                     _ => return err,
                 }
             }
-            Ok(LispValue::new(result.clone()))
+            Ok(Value::new(result.clone()))
         }
     )
 }
@@ -46,234 +46,234 @@ arithmetic_function!(sub, Sub::sub, 0.0);
 arithmetic_function!(mult, Mul::mul, 1.0);
 arithmetic_function!(div, Div::div, 1.0);
 
-fn print(args: LispList) -> LispResult {
+fn print(args: List) -> LispResult {
     if args.len() != 1 {
-        return Err("Invalid arity of 'print' function".to_owned());
+        return Err(Error::InvalidArity("print", "1"));
     }
     print!("{}", &Writer::print(args[0].clone(), true));
-    Ok(LispValue::nothing())
+    Ok(Value::nothing())
 }
 
-fn println(args: LispList) -> LispResult {
+fn println(args: List) -> LispResult {
     if args.len() != 1 {
-        return Err("Invalid arity of 'print' function".to_owned());
+        return Err(Error::InvalidArity("println", "1"));
     }
     println!("{}", &Writer::print(args[0].clone(), true));
-    Ok(LispValue::nothing())
+    Ok(Value::nothing())
 }
 
-fn str(args: LispList) -> LispResult {
+fn str(args: List) -> LispResult {
     let mut result = String::new();
     for e in args {
         result.push_str(&Writer::print(e.clone(), true));
     }
-    Ok(LispValue::string(result))
+    Ok(Value::string(result))
 }
 
-fn list(args: LispList) -> LispResult {
+fn list(args: List) -> LispResult {
     let mut result = Vec::new();
     for e in args {
         result.push(e.clone());
     }
-    Ok(LispValue::list(result))
+    Ok(Value::list(result))
 }
 
-fn listq(args: LispList) -> LispResult {
+fn listq(args: List) -> LispResult {
     if args.len() != 1 {
-        return Err("Invalid arity of 'list?' function".to_owned());
+        return Err(Error::InvalidArity("list?", "1"));
     }
-    if let LispType::List(_) = **args[0] {
-        Ok(LispValue::boolean(true))
+    if let Type::List(_) = **args[0] {
+        Ok(Value::boolean(true))
     } else {
-        Ok(LispValue::boolean(false))
+        Ok(Value::boolean(false))
     }
 }
 
-fn emptyq(args: LispList) -> LispResult {
+fn emptyq(args: List) -> LispResult {
     if args.len() != 1 {
-        return Err("Invalid arity of 'empty?' function".to_owned());
+        return Err(Error::InvalidArity("empty?", "1"));
     }
     match **args[0] {
-        LispType::List(ref v) | LispType::Vector(ref v) => {
+        Type::List(ref v) | Type::Vector(ref v) => {
             if v.len() == 0 {
-                Ok(LispValue::boolean(true))
+                Ok(Value::boolean(true))
             } else {
-                Ok(LispValue::boolean(false))
+                Ok(Value::boolean(false))
             }
         },
-        _ => Err("Invalid argument of 'empty?' function (must be the list or vector)".to_owned()),
+        _ => Err(Error::InvalidArg("empty?", "either list or vector")),
     }
 }
 
-fn count(args: LispList) -> LispResult {
+fn count(args: List) -> LispResult {
     if args.len() != 1 {
-        return Err("Invalid arity of 'count' function".to_owned());
+        return Err(Error::InvalidArity("count", "1"));
     }
     match **args[0] {
-        LispType::List(ref v) | LispType::Vector(ref v) => {
-            Ok(LispValue::int(v.len() as isize))
+        Type::List(ref v) | Type::Vector(ref v) => {
+            Ok(Value::int(v.len() as isize))
         },
-        _ => Err("Invalid argument of 'count' function (must be the list or vector)".to_owned()),
+        _ => Err(Error::InvalidArg("count", "either list or vector")),
     }
 }
 
-fn eq(args: LispList) -> LispResult {
+fn eq(args: List) -> LispResult {
     if args.len() != 2 {
-        return Err("Invalid arity of '=' function".to_owned());
+        return Err(Error::InvalidArity("=", "2"));
     }
     if **args[0] == **args[1] {
-        Ok(LispValue::boolean(true))
+        Ok(Value::boolean(true))
     } else {
-        Ok(LispValue::boolean(false))
+        Ok(Value::boolean(false))
     }
 }
 
 macro_rules! construct_cmp {
     ($args:ident, $func:ident, $func_name:expr) => (
         match **$args[0] {
-            LispType::Int(fst) => {
+            Type::Int(fst) => {
                 match **$args[1] {
-                    LispType::Float(snd) => if (fst as f64).$func(&snd) {
-                        Ok(LispValue::boolean(true))
+                    Type::Float(snd) => if (fst as f64).$func(&snd) {
+                        Ok(Value::boolean(true))
                     } else {
-                        Ok(LispValue::boolean(false))
+                        Ok(Value::boolean(false))
                     },
-                    LispType::Int(snd) => if fst.$func(&snd) {
-                        Ok(LispValue::boolean(true))
+                    Type::Int(snd) => if fst.$func(&snd) {
+                        Ok(Value::boolean(true))
                     } else {
-                        Ok(LispValue::boolean(false))
+                        Ok(Value::boolean(false))
                     },
-                    _ => Err(format!("Invalid arguments of '{}' function", $func_name))
+                    _ => Err(Error::InvalidArg(stringify!($func_name), "either integer or floating point numbers")),
                 }
             },
-            LispType::Float(fst) => {
+            Type::Float(fst) => {
                 match **$args[1] {
-                    LispType::Float(snd) => if fst.$func(&snd) {
-                        Ok(LispValue::boolean(true))
+                    Type::Float(snd) => if fst.$func(&snd) {
+                        Ok(Value::boolean(true))
                     } else {
-                        Ok(LispValue::boolean(false))
+                        Ok(Value::boolean(false))
                     },
-                    LispType::Int(snd) => if fst.$func(&(snd as f64)) {
-                        Ok(LispValue::boolean(true))
+                    Type::Int(snd) => if fst.$func(&(snd as f64)) {
+                        Ok(Value::boolean(true))
                     } else {
-                        Ok(LispValue::boolean(false))
+                        Ok(Value::boolean(false))
                     },
-                    _ => Err(format!("Invalid arguments of '{}' function", $func_name))
+                    _ => Err(Error::InvalidArg(stringify!($func_name), "either integer or floating point numbers")),
                 }
             },
-            _ => Err(format!("Invalid arguments of '{}' function", $func_name))
+            _ => Err(Error::InvalidArg(stringify!($func_name), "either integer or floating point numbers")),
         }
     )
 }
 
-fn lt(args: LispList) -> LispResult {
+fn lt(args: List) -> LispResult {
     if args.len() != 2 {
-        return Err("Invalid arity of '<' function".to_owned());
+        return Err(Error::InvalidArity("<", "2"))
     }
     construct_cmp!(args, lt, "<")
 }
 
-fn le(args: LispList) -> LispResult {
+fn le(args: List) -> LispResult {
     if args.len() != 2 {
-        return Err("Invalid arity of '<=' function".to_owned());
+        return Err(Error::InvalidArity("<=", "2"))
     }
     construct_cmp!(args, le, "<=")
 }
 
-fn gt(args: LispList) -> LispResult {
+fn gt(args: List) -> LispResult {
     if args.len() != 2 {
-        return Err("Invalid arity of '>' function".to_owned());
+        return Err(Error::InvalidArity(">", "2"))
     }
     construct_cmp!(args, gt, ">")
 }
 
-fn ge(args: LispList) -> LispResult {
+fn ge(args: List) -> LispResult {
     if args.len() != 2 {
-        return Err("Invalid arity of '>=' function".to_owned());
+        return Err(Error::InvalidArity(">=", "2"))
     }
     construct_cmp!(args, ge, ">=")
 }
 
-fn read_string(args: LispList) -> LispResult {
+fn read_string(args: List) -> LispResult {
     use Reader;
     if args.len() != 1 {
-        return Err("Invalid arity of 'read-string' function".to_owned());
+        return Err(Error::InvalidArity("read-string", "1"))
     }
-    if let LispType::Str(ref s) = **args[0] {
+    if let Type::Str(ref s) = **args[0] {
         Reader::read(s.as_bytes())
     } else {
-        Err("Invalid argument of 'read-string' function (should be string)".to_owned())
+        Err(Error::InvalidArg("read-string", "string"))
     }
 }
 
-fn slurp(args: LispList) -> LispResult {
+fn slurp(args: List) -> LispResult {
     if args.len() != 1 {
-        return Err("Invalid arity of 'slurp' function".to_owned());
+        return Err(Error::InvalidArity("slurp", "1"))
     }
     use std::io::prelude::*;
     use std::fs::File;
-    if let LispType::Str(ref s) = **args[0] {
+    if let Type::Str(ref s) = **args[0] {
         let mut f = File::open(s).unwrap();
         let mut buffer = String::new();
         f.read_to_string(&mut buffer).unwrap();
-        Ok(LispValue::string(buffer))
+        Ok(Value::string(buffer))
     } else {
-        Err("Invalid argument of 'slurp' function (should be string)".to_owned())
+        Err(Error::InvalidArg("slurp", "string"))
     }
 }
 
-fn atom(args: LispList) -> LispResult {
+fn atom(args: List) -> LispResult {
     if args.len() != 1 {
-        return Err("Invalid arity of 'atom' function".to_owned());
+        return Err(Error::InvalidArity("atom", "1"))
     }
     let t = args[0].clone();
-    Ok(LispValue::atom(t))
+    Ok(Value::atom(t))
 }
 
-fn atomq(args: LispList) -> LispResult {
+fn atomq(args: List) -> LispResult {
     if args.len() != 1 {
-        return Err("Invalid arity of 'atom?' function".to_owned());
+        return Err(Error::InvalidArity("atom?", "1"))
     }
-    if let LispType::Atom(_) = **args[0] {
-        Ok(LispValue::boolean(true))
+    if let Type::Atom(_) = **args[0] {
+        Ok(Value::boolean(true))
     } else {
-        Ok(LispValue::boolean(false))
+        Ok(Value::boolean(false))
     }
 }
 
-fn deref(args: LispList) -> LispResult {
+fn deref(args: List) -> LispResult {
     if args.len() != 1 {
-        return Err("Invalid arity of 'deref' function".to_owned());
+        return Err(Error::InvalidArity("deref", "1"))
     }
-    if let LispType::Atom(ref v) = **args[0] {
+    if let Type::Atom(ref v) = **args[0] {
         Ok(v.borrow().clone())
     } else {
-        Err("Invalid argument of 'deref' function (should be atom)".to_owned())
+        Err(Error::InvalidArg("deref", "atom"))
     }
 }
 
-fn reset(args: LispList) -> LispResult {
+fn reset(args: List) -> LispResult {
     if args.len() != 2 {
-        return Err("Invalid arity of 'reset!' function".to_owned());
+        return Err(Error::InvalidArity("reset!", "2"))
     }
-    if let LispType::Atom(ref v) = **args[0] {
+    if let Type::Atom(ref v) = **args[0] {
         *v.borrow_mut() = args[1].clone();
         Ok(v.borrow().clone())
     } else {
-        Err("Invalid arguments of 'reset!' function (should be atom and any)".to_owned())
+        Err(Error::InvalidArg("reset!", "atom and any other value"))
     }
 }
 
-fn swap(args: LispList) -> LispResult {
+fn swap(args: List) -> LispResult {
     if args.len() < 2 {
-        return Err("Invalid arity of 'swap!' function".to_owned());
+        return Err(Error::InvalidArity("swap!", ">= 2"))
     }
     let mut func_args = args[2..].to_vec();
-    if let LispType::Atom(ref v) = **args[0] {
+    if let Type::Atom(ref v) = **args[0] {
         let val = v.borrow().clone();
         func_args.insert(0, val);
         match **args[1].clone() {
-            LispType::Closure(ref closure) => {
+            Type::Closure(ref closure) => {
                 let new_env = EnvironmentStruct::with_bindings(
                     Some(closure.env.clone()),
                     closure.binds.clone(),
@@ -284,75 +284,75 @@ fn swap(args: LispList) -> LispResult {
                 *v.borrow_mut() = new_val.clone();
                 Ok(new_val)
             },
-            LispType::Func(func) => {
+            Type::Func(func) => {
                 let new_val = func(func_args)?;
                 *v.borrow_mut() = new_val.clone();
                 Ok(new_val)
             }
-            _ => Err("Invalid argument: Not a closure or function".to_owned())
+            _ => Err(Error::InvalidArg("swap!", "atom, either closure or function, any values"))
         }
     } else {
-        Err("Not atom".to_owned())
+        Err(Error::InvalidArg("swap!", "atom, either closure or function, any values"))
     }
 }
 
-fn cons(args: LispList) -> LispResult {
+fn cons(args: List) -> LispResult {
     if args.len() != 2 {
-        return Err("Invalid arity of 'cons' function".to_owned());
+        return Err(Error::InvalidArity("cons", "2"))
     }
-    if let LispType::List(ref v) = **args[1].clone() {
+    if let Type::List(ref v) = **args[1].clone() {
         let mut result = v.clone();
         result.insert(0, args[0].clone());
-        Ok(LispValue::list(result))
+        Ok(Value::list(result))
     } else {
-        Err("Invalid arguments of 'cons' function".to_owned())
+        Err(Error::InvalidArg("cons", "any value and list"))
     }
 }
 
-fn concat(args: LispList) -> LispResult {
+fn concat(args: List) -> LispResult {
     let mut result = Vec::new();
     for e in args {
         match **e {
-            LispType::List(ref v) => result.extend(v.iter().cloned()),
-            _ => return Err("Invalid arguments of 'concat' function".to_owned()),
+            Type::List(ref v) => result.extend(v.iter().cloned()),
+            _ => return Err(Error::InvalidArg("concat", "any amount of lists")),
         }
     }
-    Ok(LispValue::list(result))
+    Ok(Value::list(result))
 }
 
 pub fn standart_environment() -> Environment {
     let result = EnvironmentStruct::new(None);
     {
         let mut r = result.borrow_mut();
-        r.set("+".to_owned(), LispValue::func(add));
-        r.set("-".to_owned(), LispValue::func(sub));
-        r.set("*".to_owned(), LispValue::func(mult));
-        r.set("/".to_owned(), LispValue::func(div));
+        r.set("+".to_owned(), Value::func(add));
+        r.set("-".to_owned(), Value::func(sub));
+        r.set("*".to_owned(), Value::func(mult));
+        r.set("/".to_owned(), Value::func(div));
 
-        r.set("print".to_owned(), LispValue::func(print));
-        r.set("println".to_owned(), LispValue::func(println));
-        r.set("str".to_owned(), LispValue::func(str));
-        r.set("list".to_owned(), LispValue::func(list));
-        r.set("list?".to_owned(), LispValue::func(listq));
-        r.set("empty?".to_owned(), LispValue::func(emptyq));
-        r.set("count".to_owned(), LispValue::func(count));
-        r.set("=".to_owned(), LispValue::func(eq));
-        r.set("<=".to_owned(), LispValue::func(le));
-        r.set("<".to_owned(), LispValue::func(lt));
-        r.set(">=".to_owned(), LispValue::func(ge));
-        r.set(">".to_owned(), LispValue::func(gt));
+        r.set("print".to_owned(), Value::func(print));
+        r.set("println".to_owned(), Value::func(println));
+        r.set("str".to_owned(), Value::func(str));
+        r.set("list".to_owned(), Value::func(list));
+        r.set("list?".to_owned(), Value::func(listq));
+        r.set("empty?".to_owned(), Value::func(emptyq));
+        r.set("count".to_owned(), Value::func(count));
+        r.set("=".to_owned(), Value::func(eq));
+        r.set("<=".to_owned(), Value::func(le));
+        r.set("<".to_owned(), Value::func(lt));
+        r.set(">=".to_owned(), Value::func(ge));
+        r.set(">".to_owned(), Value::func(gt));
 
-        r.set("read-string".to_owned(), LispValue::func(read_string));
-        r.set("slurp".to_owned(), LispValue::func(slurp));
+        r.set("read-string".to_owned(), Value::func(read_string));
+        r.set("slurp".to_owned(), Value::func(slurp));
 
-        r.set("atom".to_owned(), LispValue::func(atom));
-        r.set("atom?".to_owned(), LispValue::func(atomq));
-        r.set("deref".to_owned(), LispValue::func(deref));
-        r.set("reset!".to_owned(), LispValue::func(reset));
-        r.set("swap!".to_owned(), LispValue::func(swap));
+        r.set("atom".to_owned(), Value::func(atom));
+        r.set("atom?".to_owned(), Value::func(atomq));
+        r.set("deref".to_owned(), Value::func(deref));
+        r.set("reset!".to_owned(), Value::func(reset));
+        r.set("swap!".to_owned(), Value::func(swap));
 
-        r.set("cons".to_owned(), LispValue::func(cons));
-        r.set("concat".to_owned(), LispValue::func(concat));
+        r.set("cons".to_owned(), Value::func(cons));
+        r.set("concat".to_owned(), Value::func(concat));
     }
     let load_file = "(def! load-file (fn (f) (eval (read-string (slurp f)))))".into();
     read_eval(load_file, result.clone()).unwrap();

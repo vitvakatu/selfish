@@ -7,7 +7,7 @@ use selfish::*;
 fn print(s: LispResult) {
     match s {
         Ok(v) => println!("{}", &Writer::print(v, false)),
-        Err(e) => println!("Eval error: {}", &e),
+        Err(e) => println!("Error: {:?}", &e),
     }
 }
 
@@ -18,7 +18,7 @@ fn main() {
     match read_eval("(load-file \"prelude.slf\")".into(), environment.clone()) {
         Ok(_) => println!("Done"),
         Err(e) => println!("Error, you have access to basic functions only\n\
-                            Reason: {}", &e),
+                            Reason: {:?}", &e),
     }
     loop {
         let readline = rl.readline(">> ");

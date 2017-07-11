@@ -118,6 +118,19 @@ pub enum Error {
     Value(Value),
 }
 
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            Error::Custom(ref c) => write!(f, "{}", c),
+            Error::Incomplete => write!(f, "Incomplete (may be unmatched parentheses)"),
+            Error::InvalidArg(ref func, ref valid) => write!(f, "Invalid arguments for {}. Valid arguments should be {}", func, valid),
+            Error::InvalidArity(ref func, ref valid) => write!(f, "Invalid arity of {}. Valid arity is {}", func, valid),
+            Error::ParseError(ref why) => write!(f, "Parse Error: {}", why),
+            Error::Value(ref v) => write!(f, "{}", Writer::print(v.clone(), true)),
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct Closure {
     pub binds: Vec<String>,

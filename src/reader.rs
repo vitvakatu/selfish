@@ -139,13 +139,29 @@ named!(expression<&[u8], LispType>,
     })
 );
 
+named!(program<&[u8], LispValue>,
+    map!(many1!(ws!(expression)),
+    |exprs| {
+        if exprs.len() > 1 {
+            let mut values: Vec<LispValue> = exprs
+                                                .into_iter()
+                                                .map(LispValue::new)
+                                                .collect();
+            values.insert(0, LispValue::symbol("do".into()));
+            LispValue::list(values)
+        } else {
+            LispValue::new(exprs[0].clone())
+        }
+    })
+);
+
 pub struct Reader {
 }
 
 impl Reader {
     pub fn read(slice: &[u8]) -> LispResult {
-        match expression(slice) {
-            IResult::Done(_, result) => Ok(LispValue::new(result)),
+        match program(slice) {
+            IResult::Done(_, result) => Ok(result),
             _ => Err("Something gone wrong...".to_owned()),
         }
     }

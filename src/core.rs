@@ -354,7 +354,7 @@ pub fn standart_environment() -> Environment {
         r.set("cons".to_owned(), LispValue::func(internal_cons));
         r.set("concat".to_owned(), LispValue::func(internal_concat));
     }
-    let load_file = "(def! load-file (fn (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))".into();
+    let load_file = "(def! load-file (fn (f) (eval (read-string (slurp f)))))".into();
     read_eval(load_file, result.clone()).unwrap();
     result
 }

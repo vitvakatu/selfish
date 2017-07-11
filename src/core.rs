@@ -222,7 +222,7 @@ fn internal_slurp(args: LispList) -> LispResult {
     }
 }
 
-pub fn internal_atom(args: LispList) -> LispResult {
+fn internal_atom(args: LispList) -> LispResult {
     if args.len() != 1 {
         return Err("Invalid arity of 'atom' function".to_owned());
     }
@@ -230,7 +230,7 @@ pub fn internal_atom(args: LispList) -> LispResult {
     Ok(LispValue::atom(t))
 }
 
-pub fn internal_atomq(args: LispList) -> LispResult {
+fn internal_atomq(args: LispList) -> LispResult {
     if args.len() != 1 {
         return Err("Invalid arity of 'atom?' function".to_owned());
     }
@@ -241,7 +241,7 @@ pub fn internal_atomq(args: LispList) -> LispResult {
     }
 }
 
-pub fn internal_deref(args: LispList) -> LispResult {
+fn internal_deref(args: LispList) -> LispResult {
     if args.len() != 1 {
         return Err("Invalid arity of 'deref' function".to_owned());
     }
@@ -252,7 +252,7 @@ pub fn internal_deref(args: LispList) -> LispResult {
     }
 }
 
-pub fn internal_reset(args: LispList) -> LispResult {
+fn internal_reset(args: LispList) -> LispResult {
     if args.len() != 2 {
         return Err("Invalid arity of 'reset!' function".to_owned());
     }
@@ -264,7 +264,7 @@ pub fn internal_reset(args: LispList) -> LispResult {
     }
 }
 
-pub fn internal_swap(args: LispList) -> LispResult {
+fn internal_swap(args: LispList) -> LispResult {
     if args.len() < 2 {
         return Err("Invalid arity of 'swap!' function".to_owned());
     }

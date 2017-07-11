@@ -46,7 +46,7 @@ arithmetic_function!(sub, Sub::sub, 0.0);
 arithmetic_function!(mult, Mul::mul, 1.0);
 arithmetic_function!(div, Div::div, 1.0);
 
-fn internal_print(args: LispList) -> LispResult {
+fn print(args: LispList) -> LispResult {
     if args.len() != 1 {
         return Err("Invalid arity of 'print' function".to_owned());
     }
@@ -54,7 +54,7 @@ fn internal_print(args: LispList) -> LispResult {
     Ok(LispValue::nothing())
 }
 
-fn internal_println(args: LispList) -> LispResult {
+fn println(args: LispList) -> LispResult {
     if args.len() != 1 {
         return Err("Invalid arity of 'print' function".to_owned());
     }
@@ -62,7 +62,7 @@ fn internal_println(args: LispList) -> LispResult {
     Ok(LispValue::nothing())
 }
 
-fn internal_str(args: LispList) -> LispResult {
+fn str(args: LispList) -> LispResult {
     let mut result = String::new();
     for e in args {
         result.push_str(&Writer::print(e.clone(), true));
@@ -70,7 +70,7 @@ fn internal_str(args: LispList) -> LispResult {
     Ok(LispValue::string(result))
 }
 
-fn internal_list(args: LispList) -> LispResult {
+fn list(args: LispList) -> LispResult {
     let mut result = Vec::new();
     for e in args {
         result.push(e.clone());
@@ -78,7 +78,7 @@ fn internal_list(args: LispList) -> LispResult {
     Ok(LispValue::list(result))
 }
 
-fn internal_listq(args: LispList) -> LispResult {
+fn listq(args: LispList) -> LispResult {
     if args.len() != 1 {
         return Err("Invalid arity of 'list?' function".to_owned());
     }
@@ -89,7 +89,7 @@ fn internal_listq(args: LispList) -> LispResult {
     }
 }
 
-fn internal_emptyq(args: LispList) -> LispResult {
+fn emptyq(args: LispList) -> LispResult {
     if args.len() != 1 {
         return Err("Invalid arity of 'empty?' function".to_owned());
     }
@@ -105,7 +105,7 @@ fn internal_emptyq(args: LispList) -> LispResult {
     }
 }
 
-fn internal_count(args: LispList) -> LispResult {
+fn count(args: LispList) -> LispResult {
     if args.len() != 1 {
         return Err("Invalid arity of 'count' function".to_owned());
     }
@@ -117,7 +117,7 @@ fn internal_count(args: LispList) -> LispResult {
     }
 }
 
-fn internal_eq(args: LispList) -> LispResult {
+fn eq(args: LispList) -> LispResult {
     if args.len() != 2 {
         return Err("Invalid arity of '=' function".to_owned());
     }
@@ -166,35 +166,35 @@ macro_rules! construct_cmp {
     )
 }
 
-fn internal_lt(args: LispList) -> LispResult {
+fn lt(args: LispList) -> LispResult {
     if args.len() != 2 {
         return Err("Invalid arity of '<' function".to_owned());
     }
     construct_cmp!(args, lt, "<")
 }
 
-fn internal_le(args: LispList) -> LispResult {
+fn le(args: LispList) -> LispResult {
     if args.len() != 2 {
         return Err("Invalid arity of '<=' function".to_owned());
     }
     construct_cmp!(args, le, "<=")
 }
 
-fn internal_gt(args: LispList) -> LispResult {
+fn gt(args: LispList) -> LispResult {
     if args.len() != 2 {
         return Err("Invalid arity of '>' function".to_owned());
     }
     construct_cmp!(args, gt, ">")
 }
 
-fn internal_ge(args: LispList) -> LispResult {
+fn ge(args: LispList) -> LispResult {
     if args.len() != 2 {
         return Err("Invalid arity of '>=' function".to_owned());
     }
     construct_cmp!(args, ge, ">=")
 }
 
-fn internal_read_string(args: LispList) -> LispResult {
+fn read_string(args: LispList) -> LispResult {
     use Reader;
     if args.len() != 1 {
         return Err("Invalid arity of 'read-string' function".to_owned());
@@ -206,7 +206,7 @@ fn internal_read_string(args: LispList) -> LispResult {
     }
 }
 
-fn internal_slurp(args: LispList) -> LispResult {
+fn slurp(args: LispList) -> LispResult {
     if args.len() != 1 {
         return Err("Invalid arity of 'slurp' function".to_owned());
     }
@@ -222,7 +222,7 @@ fn internal_slurp(args: LispList) -> LispResult {
     }
 }
 
-fn internal_atom(args: LispList) -> LispResult {
+fn atom(args: LispList) -> LispResult {
     if args.len() != 1 {
         return Err("Invalid arity of 'atom' function".to_owned());
     }
@@ -230,7 +230,7 @@ fn internal_atom(args: LispList) -> LispResult {
     Ok(LispValue::atom(t))
 }
 
-fn internal_atomq(args: LispList) -> LispResult {
+fn atomq(args: LispList) -> LispResult {
     if args.len() != 1 {
         return Err("Invalid arity of 'atom?' function".to_owned());
     }
@@ -241,7 +241,7 @@ fn internal_atomq(args: LispList) -> LispResult {
     }
 }
 
-fn internal_deref(args: LispList) -> LispResult {
+fn deref(args: LispList) -> LispResult {
     if args.len() != 1 {
         return Err("Invalid arity of 'deref' function".to_owned());
     }
@@ -252,7 +252,7 @@ fn internal_deref(args: LispList) -> LispResult {
     }
 }
 
-fn internal_reset(args: LispList) -> LispResult {
+fn reset(args: LispList) -> LispResult {
     if args.len() != 2 {
         return Err("Invalid arity of 'reset!' function".to_owned());
     }
@@ -264,7 +264,7 @@ fn internal_reset(args: LispList) -> LispResult {
     }
 }
 
-fn internal_swap(args: LispList) -> LispResult {
+fn swap(args: LispList) -> LispResult {
     if args.len() < 2 {
         return Err("Invalid arity of 'swap!' function".to_owned());
     }
@@ -296,7 +296,7 @@ fn internal_swap(args: LispList) -> LispResult {
     }
 }
 
-fn internal_cons(args: LispList) -> LispResult {
+fn cons(args: LispList) -> LispResult {
     if args.len() != 2 {
         return Err("Invalid arity of 'cons' function".to_owned());
     }
@@ -309,7 +309,7 @@ fn internal_cons(args: LispList) -> LispResult {
     }
 }
 
-fn internal_concat(args: LispList) -> LispResult {
+fn concat(args: LispList) -> LispResult {
     let mut result = Vec::new();
     for e in args {
         match **e {
@@ -329,30 +329,30 @@ pub fn standart_environment() -> Environment {
         r.set("*".to_owned(), LispValue::func(mult));
         r.set("/".to_owned(), LispValue::func(div));
 
-        r.set("print".to_owned(), LispValue::func(internal_print));
-        r.set("println".to_owned(), LispValue::func(internal_println));
-        r.set("str".to_owned(), LispValue::func(internal_str));
-        r.set("list".to_owned(), LispValue::func(internal_list));
-        r.set("list?".to_owned(), LispValue::func(internal_listq));
-        r.set("empty?".to_owned(), LispValue::func(internal_emptyq));
-        r.set("count".to_owned(), LispValue::func(internal_count));
-        r.set("=".to_owned(), LispValue::func(internal_eq));
-        r.set("<=".to_owned(), LispValue::func(internal_le));
-        r.set("<".to_owned(), LispValue::func(internal_lt));
-        r.set(">=".to_owned(), LispValue::func(internal_ge));
-        r.set(">".to_owned(), LispValue::func(internal_gt));
+        r.set("print".to_owned(), LispValue::func(print));
+        r.set("println".to_owned(), LispValue::func(println));
+        r.set("str".to_owned(), LispValue::func(str));
+        r.set("list".to_owned(), LispValue::func(list));
+        r.set("list?".to_owned(), LispValue::func(listq));
+        r.set("empty?".to_owned(), LispValue::func(emptyq));
+        r.set("count".to_owned(), LispValue::func(count));
+        r.set("=".to_owned(), LispValue::func(eq));
+        r.set("<=".to_owned(), LispValue::func(le));
+        r.set("<".to_owned(), LispValue::func(lt));
+        r.set(">=".to_owned(), LispValue::func(ge));
+        r.set(">".to_owned(), LispValue::func(gt));
 
-        r.set("read-string".to_owned(), LispValue::func(internal_read_string));
-        r.set("slurp".to_owned(), LispValue::func(internal_slurp));
+        r.set("read-string".to_owned(), LispValue::func(read_string));
+        r.set("slurp".to_owned(), LispValue::func(slurp));
 
-        r.set("atom".to_owned(), LispValue::func(internal_atom));
-        r.set("atom?".to_owned(), LispValue::func(internal_atomq));
-        r.set("deref".to_owned(), LispValue::func(internal_deref));
-        r.set("reset!".to_owned(), LispValue::func(internal_reset));
-        r.set("swap!".to_owned(), LispValue::func(internal_swap));
+        r.set("atom".to_owned(), LispValue::func(atom));
+        r.set("atom?".to_owned(), LispValue::func(atomq));
+        r.set("deref".to_owned(), LispValue::func(deref));
+        r.set("reset!".to_owned(), LispValue::func(reset));
+        r.set("swap!".to_owned(), LispValue::func(swap));
 
-        r.set("cons".to_owned(), LispValue::func(internal_cons));
-        r.set("concat".to_owned(), LispValue::func(internal_concat));
+        r.set("cons".to_owned(), LispValue::func(cons));
+        r.set("concat".to_owned(), LispValue::func(concat));
     }
     let load_file = "(def! load-file (fn (f) (eval (read-string (slurp f)))))".into();
     read_eval(load_file, result.clone()).unwrap();

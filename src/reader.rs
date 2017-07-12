@@ -62,11 +62,14 @@ named!(keyword<String>,
 
 named!(atom<&[u8], Type>,
     alt_complete!(number |
-                  tag!("true") => { |_| Type::Boolean(true) } |
-                  tag!("false") => { |_| Type::Boolean(false) } |
                   keyword => { |v| Type::Keyword(v) } |
                   string => { |v| Type::Str(v) } |
-                  symbol => { |v| Type::Symbol(v) }
+                  symbol => { |v: String| match v.as_ref() {
+                      "true" => Type::Boolean(true),
+                      "false" => Type::Boolean(false),
+                      _ => Type::Symbol(v),
+                      }
+                  }
 ));
 
 named!(list<&[u8], Type>,

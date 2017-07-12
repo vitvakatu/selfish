@@ -121,18 +121,22 @@ pub fn eval(mut s: Value, mut env: Environment) -> LispResult {
                         }
                     },
                     Type::Symbol(ref sym) if sym == "defmacro!" => {
-                        if v.len() != 3 {
-                            return Err(Error::InvalidArity("defmacro!", "2"))
+                        if v.len() != 4 {
+                            return Err(Error::InvalidArity("defmacro!", "3"))
                         }
                         if let Type::Symbol(ref name) = **v[1] {
-                            let val = eval(v[2].clone(), env.clone())?;
+                            let closure = Value::list(vec![
+                                                        Value::symbol("fn".into()),
+                                                        v[2].clone(),
+                                                        v[3].clone()]);
+                            let val = eval(closure, env.clone())?;
                             if let Type::Closure(ref closure) = **val {
                                 let macros = Value::macros(closure.clone());
                                 env.borrow_mut().set(name.clone(), macros.clone());
                                 return Ok(macros.clone());
                             }
                         }
-                        return Err(Error::InvalidArg("defmacro!", "symbol followed by closure"))
+                        return Err(Error::InvalidArg("defmacro!", "symbol followed by list of symbols and any value"))
                     }
                     Type::Symbol(ref sym) if sym == "let" => {
                         if v.len() != 3 {

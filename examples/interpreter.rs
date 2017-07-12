@@ -20,13 +20,44 @@ fn main() {
         Err(e) => println!("Error, you have access to basic functions only\n\
                             Reason: {}", &e),
     }
+    let mut incomplete = false;
+    let mut previous_input = String::new();
     loop {
         let readline = rl.readline(">> ");
 
         match readline {
-            Ok(line) => {
-                rl.add_history_entry(&line);
-                print(read_eval(&line, environment.clone()));
+            Ok(mut line) => {
+                line.push_str("\n");
+                if incomplete {
+                    previous_input.push_str("\n");
+                    previous_input.push_str(&line);
+                }
+                let parse_result = if incomplete {
+                    read_eval(&previous_input, environment.clone())
+                } else {
+                    read_eval(&line, environment.clone())
+                };
+                match parse_result {
+                    a @ Ok(_) => {
+                        incomplete = false;
+                        previous_input.clear();
+                        print(a);
+                        rl.add_history_entry(&line);
+                    },
+                    Err(e) => match e {
+                        Error::Incomplete => {
+                            if !incomplete {
+                                previous_input.push_str(&line);
+                            }
+                            incomplete = true;
+                        },
+                        _ => {
+                            incomplete = false;
+                            previous_input.clear();
+                            print(Err(e));
+                        },
+                    }
+                }
             },
             Err(_) => break,
         }

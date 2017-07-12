@@ -1,4 +1,4 @@
-use nom::{IResult, digit, double};
+use nom::{IResult, digit, double, not_line_ending, line_ending};
 use std::str;
 use std::str::FromStr;
 use std::collections::HashMap;
@@ -47,7 +47,7 @@ named!(number<Type>,
 );
 
 named!(symbol<String>,
-    map!(many1!(none_of!("'`~@[](){}\"\t\n\r ")),
+    map!(many1!(none_of!("'`~@[](){};\"\t\n\r ")),
     |v| {
         v.into_iter().collect()
     })
@@ -80,7 +80,7 @@ named!(list<&[u8], Type>,
     ),
     |v| {
         let mut result = Vec::new();
-        for e in v {
+        for e in v.into_iter().filter(|e| e != &Type::Nothing) {
             result.push(Value::new(e));
         }
         Type::List(result)
@@ -95,7 +95,7 @@ named!(vector<&[u8], Type>,
     ),
     |v| {
         let mut result = Vec::new();
-        for e in v {
+        for e in v.into_iter().filter(|e| e != &Type::Nothing) {
             result.push(Value::new(e));
         }
         Type::Vector(result)
@@ -110,7 +110,7 @@ named!(hash_map<Type>,
     ),
     |v| {
         let mut result = HashMap::new();
-        for e in v {
+        for e in v.into_iter().filter(|e| e.1 != Type::Nothing) {
             result.insert(e.0, Value::new(e.1));
         }
         Type::Map(result)
@@ -126,7 +126,7 @@ named!(expression<&[u8], Type>,
             tag!("~@") => { |_| Type::Symbol("splice-unquote".into()) } |
             tag!("~") => { |_| Type::Symbol("unquote".into()) }
         )),
-        alt!(atom | list | vector | hash_map)
+        alt!(atom | list | vector | hash_map | comment)
     ),
     |(mut mac, expr)| {
         if !mac.is_empty() {
@@ -142,12 +142,22 @@ named!(expression<&[u8], Type>,
     })
 );
 
+named!(comment<&[u8], Type>,
+    do_parse!(
+        tag!(";") >>
+        not_line_ending >>
+        line_ending >>
+        (Type::Nothing)
+    )
+);
+
 named!(program<&[u8], Value>,
     map!(many1!(ws!(expression)),
     |exprs| {
         if exprs.len() > 1 {
             let mut values: Vec<Value> = exprs
                                                 .into_iter()
+                                                .filter(|e| e != &Type::Nothing)
                                                 .map(Value::new)
                                                 .collect();
             values.insert(0, Value::symbol("do".into()));

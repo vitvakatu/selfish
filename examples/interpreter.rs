@@ -26,7 +26,7 @@ fn main() {
         match readline {
             Ok(line) => {
                 rl.add_history_entry(&line);
-                print(read_eval(line, environment.clone()));
+                print(read_eval(&line, environment.clone()));
             },
             Err(_) => break,
         }

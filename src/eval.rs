@@ -2,7 +2,7 @@ use {LispResult, Error, Value, Type, Environment, EnvironmentStruct, Closure};
 
 fn quasiquote(s: Value) -> Value {
     match **s.clone() {
-        Type::List(ref v) if v.len() > 0 => {
+        Type::List(ref v) if !v.is_empty() => {
             match **v[0].clone() {
                 Type::Symbol(ref sym) if sym == "unquote" && v.len() >= 2 => {
                     return v[1].clone();
@@ -36,8 +36,8 @@ fn quasiquote(s: Value) -> Value {
     }
 }
 
-fn is_macro_call(ast: Value, env: Environment) -> Option<Closure> {
-    if let Type::List(ref v) = **ast {
+fn is_macro_call(ast: &Value, env: Environment) -> Option<Closure> {
+    if let Type::List(ref v) = ***ast {
         if let Type::Symbol(ref sym) = **v[0] {
             match env.borrow().get(sym.clone()) {
                 Ok(val) => if let Type::Closure(ref c) = **val {
@@ -53,14 +53,14 @@ fn is_macro_call(ast: Value, env: Environment) -> Option<Closure> {
 }
 
 fn macroexpand(mut ast: Value, mut env: Environment) -> LispResult {
-    while let Some(closure) = is_macro_call(ast.clone(), env.clone()) {
+    while let Some(closure) = is_macro_call(&ast, env.clone()) {
         match **ast.clone() {
             Type::List(ref v) => {
                 let args = v[1..].to_vec();
                 let new_env = EnvironmentStruct::with_bindings(
                     Some(closure.env.clone()),
                     closure.binds.clone(),
-                    args).map_err(|e| Error::BindError(e))?;
+                    args).map_err(Error::BindError)?;
                 ast = eval(closure.body.clone(), new_env.clone())?;
                 env = new_env.clone();
                 continue;
@@ -71,8 +71,8 @@ fn macroexpand(mut ast: Value, mut env: Environment) -> LispResult {
     Ok(ast)
 }
 
-fn eval_ast(s: Value, env: Environment) -> LispResult {
-    match **s {
+fn eval_ast(s: &Value, env: Environment) -> LispResult {
+    match ***s {
         Type::Symbol(ref k) => env.borrow().get(k.clone()),
         Type::List(ref v) => {
             let mut result = Vec::new();
@@ -104,7 +104,7 @@ pub fn eval(mut s: Value, mut env: Environment) -> LispResult {
         s = macroexpand(s.clone(), env.clone())?;
         match **s.clone() {
             Type::List(ref v) => {
-                if v.len() == 0 {
+                if v.is_empty() {
                     return Ok(s.clone());
                 }
                 match **v[0] {
@@ -182,7 +182,7 @@ pub fn eval(mut s: Value, mut env: Environment) -> LispResult {
                         let expr = eval(v[1].clone(), env.clone())?;
                         match **expr {
                             Type::List(ref vec) |
-                            Type::Vector(ref vec) if vec.len() == 0 => {
+                            Type::Vector(ref vec) if vec.is_empty() => {
                                 s = v[3].clone();
                                 continue;
                             },
@@ -259,7 +259,7 @@ pub fn eval(mut s: Value, mut env: Environment) -> LispResult {
                             ok @ Ok(_) => return ok,
                             Err(e) => match e {
                                 Error::Value(value) => value.clone(),
-                                a @ _ => Value::string(a.to_string()),
+                                any => Value::string(any.to_string()),
                             }
                         };
                         if let Type::List(ref list) = **v[2] {
@@ -276,7 +276,7 @@ pub fn eval(mut s: Value, mut env: Environment) -> LispResult {
                                     Some(env.clone()),
                                     vec![bind_sym.clone()],
                                     vec![err_val]
-                                ).map_err(|e| Error::BindError(e))?;
+                                ).map_err(Error::BindError)?;
                                 s = list[2].clone();
                                 env = new_env;
                                 continue;
@@ -286,7 +286,7 @@ pub fn eval(mut s: Value, mut env: Environment) -> LispResult {
                         }
                     }
                     _ => {
-                        let evaluated = eval_ast(s.clone(), env.clone())?;
+                        let evaluated = eval_ast(&s, env.clone())?;
                         match **evaluated {
                             Type::List(ref v) => {
                                 let args = v[1..].to_vec();
@@ -297,7 +297,7 @@ pub fn eval(mut s: Value, mut env: Environment) -> LispResult {
                                             Some(closure.env.clone()),
                                             closure.binds.clone(),
                                             args
-                                        ).map_err(|e| Error::BindError(e))?;
+                                        ).map_err(Error::BindError)?;
                                         s = closure.body.clone();
                                         env = new_env.clone();
                                         continue;
@@ -310,7 +310,7 @@ pub fn eval(mut s: Value, mut env: Environment) -> LispResult {
                     },
                 }
             },
-            _ => return eval_ast(s.clone(), env),
+            _ => return eval_ast(&s, env),
         }
     }
 }

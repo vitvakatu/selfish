@@ -31,7 +31,7 @@ pub enum Type {
     List(List),
     Vector(List),
     Map(HashMap<String, Value>),
-    Func(fn(List) -> LispResult),
+    Func(Function),
     Closure(Closure),
     Nothing,
 }
@@ -124,8 +124,8 @@ impl std::fmt::Display for Error {
         match *self {
             Error::Custom(ref c) => write!(f, "{}", c),
             Error::Incomplete => write!(f, "Incomplete (may be unmatched parentheses)"),
-            Error::InvalidArg(ref func, ref valid) => write!(f, "Invalid arguments for {}. Valid arguments should be {}", func, valid),
-            Error::InvalidArity(ref func, ref valid) => write!(f, "Invalid arity of {}. Valid arity is {}", func, valid),
+            Error::InvalidArg(func, valid) => write!(f, "Invalid arguments for {}. Valid arguments should be {}", func, valid),
+            Error::InvalidArity(func, valid) => write!(f, "Invalid arity of {}. Valid arity is {}", func, valid),
             Error::ParseError(ref why) => write!(f, "Parse Error: {}", why),
             Error::Value(ref v) => write!(f, "{}", Writer::print(v.clone(), true)),
             Error::BindError(ref e) => match *e {
@@ -156,15 +156,15 @@ impl std::fmt::Debug for Closure {
     }
 }
 
-fn print_str(ast: Value, pretty: bool) -> String {
-    match **ast {
+fn print_str(ast: &Value, pretty: bool) -> String {
+    match ***ast {
         Type::Boolean(ref v) => v.to_string(),
         Type::Float(ref v) => v.to_string(),
         Type::Int(ref v) => v.to_string(),
         Type::List(ref v) => {
             let mut result = String::new();
             for (i, e) in v.iter().enumerate() {
-                result.push_str(&print_str(e.clone(), pretty));
+                result.push_str(&print_str(e, pretty));
                 if i != v.len() - 1 {
                     result.push_str(" ");
                 }
@@ -174,7 +174,7 @@ fn print_str(ast: Value, pretty: bool) -> String {
         Type::Vector(ref v) => {
             let mut result = String::new();
             for (i, e) in v.iter().enumerate() {
-                result.push_str(&print_str(e.clone(), pretty));
+                result.push_str(&print_str(e, pretty));
                 if i != v.len() - 1 {
                     result.push_str(" ");
                 }
@@ -185,7 +185,7 @@ fn print_str(ast: Value, pretty: bool) -> String {
             let mut result = String::new();
             for (i, (key, value)) in v.iter().enumerate() {
                 result.push_str(&format!(":{} {}", &key,
-                                &print_str(value.clone(), pretty)));
+                                &print_str(value, pretty)));
                 if i != v.len() - 1 {
                     result.push_str(" ");
                 }
@@ -193,7 +193,7 @@ fn print_str(ast: Value, pretty: bool) -> String {
             format!("{{{}}}", &result)
         },
         Type::Str(ref v) => if pretty {
-            format!("{}", v)
+            v.clone()
         } else {
             format!("\"{}\"", v)
         },
@@ -202,7 +202,7 @@ fn print_str(ast: Value, pretty: bool) -> String {
         Type::Func(_) => "#<function>".to_owned(),
         Type::Closure(_) => "#<closure>".to_owned(),
         Type::Nothing => "".to_owned(),
-        Type::Atom(ref v) => format!("atom<{}>", &print_str(v.borrow().clone(), pretty)),
+        Type::Atom(ref v) => format!("atom<{}>", &print_str(&v.borrow(), pretty)),
     }
 }
 
@@ -211,7 +211,7 @@ pub struct Writer {
 
 impl Writer {
     pub fn print(ast: Value, pretty: bool) -> String {
-        print_str(ast, pretty)
+        print_str(&ast, pretty)
     }
 }
 

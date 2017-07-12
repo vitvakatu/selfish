@@ -129,7 +129,7 @@ named!(expression<&[u8], Type>,
         alt!(atom | list | vector | hash_map)
     ),
     |(mut mac, expr)| {
-        if mac.len() != 0 {
+        if !mac.is_empty() {
             let mut result = expr;
             mac.reverse();
             for e in mac {

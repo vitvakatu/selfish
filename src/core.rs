@@ -335,7 +335,7 @@ fn nth(args: List) -> LispResult {
             }
             Ok(v[index as usize].clone())
         }
-        _ => return Err(Error::InvalidArg("nth", "list or vector followed by integer number"))
+        _ => Err(Error::InvalidArg("nth", "list or vector followed by integer number"))
     }
 }
 
@@ -351,7 +351,7 @@ fn first(args: List) -> LispResult {
                 Ok(Value::list(vec![]))
             }
         }
-        _ => return Err(Error::InvalidArg("first", "list or vector"))
+        _ => Err(Error::InvalidArg("first", "list or vector"))
     }
 }
 
@@ -367,7 +367,7 @@ fn rest(args: List) -> LispResult {
                 Ok(Value::list(vec![]))
             }
         }
-        _ => return Err(Error::InvalidArg("rest", "list or vector"))
+        _ => Err(Error::InvalidArg("rest", "list or vector"))
     }
 }
 
@@ -582,7 +582,7 @@ fn keys(args: List) -> LispResult {
         return Err(Error::InvalidArity("keys", "1"))
     }
     if let Type::Map(ref map) = **args[0] {
-        Ok(Value::list(map.keys().cloned().map(|e| Value::keyword(e)).collect()))
+        Ok(Value::list(map.keys().cloned().map(Value::keyword).collect()))
     } else {
         Err(Error::InvalidArg("keys", "hash-map"))
     }
@@ -660,7 +660,7 @@ pub fn standart_environment() -> Environment {
     result
 }
 
-pub fn read_eval(s: String, env: Environment) -> LispResult {
+pub fn read_eval(s: &str, env: Environment) -> LispResult {
     use Reader;
     use eval::eval;
     let ast = Reader::read(s.as_bytes())?;

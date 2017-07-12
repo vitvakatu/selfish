@@ -320,6 +320,285 @@ fn concat(args: List) -> LispResult {
     Ok(Value::list(result))
 }
 
+fn nth(args: List) -> LispResult {
+    if args.len() != 2 {
+        return Err(Error::InvalidArity("nth", "2"))
+    }
+    let index = match **args[1] {
+        Type::Int(i) => i,
+        _ => return Err(Error::InvalidArg("nth", "list or vector followed by integer number"))
+    };
+    match **args[0] {
+        Type::List(ref v) | Type::Vector(ref v) => {
+            if v.len() <= index as usize || index < 0 {
+                return Err(Error::Value(Value::string("index out of bounds".into())))
+            }
+            Ok(v[index as usize].clone())
+        }
+        _ => return Err(Error::InvalidArg("nth", "list or vector followed by integer number"))
+    }
+}
+
+fn first(args: List) -> LispResult {
+    if args.len() != 1 {
+        return Err(Error::InvalidArity("first", "1"))
+    }
+    match **args[0] {
+        Type::List(ref v) | Type::Vector(ref v) => {
+            if v.len() >= 1 {
+                Ok(v[0].clone())
+            } else {
+                Ok(Value::list(vec![]))
+            }
+        }
+        _ => return Err(Error::InvalidArg("first", "list or vector"))
+    }
+}
+
+fn rest(args: List) -> LispResult {
+    if args.len() != 1 {
+        return Err(Error::InvalidArity("rest", "1"))
+    }
+    match **args[0] {
+        Type::List(ref v) | Type::Vector(ref v) => {
+            if v.len() >= 2 {
+                Ok(Value::list(v[1..].to_vec()))
+            } else {
+                Ok(Value::list(vec![]))
+            }
+        }
+        _ => return Err(Error::InvalidArg("rest", "list or vector"))
+    }
+}
+
+fn trueq(args: List) -> LispResult {
+    if args.len() != 1 {
+        return Err(Error::InvalidArity("true?", "1"))
+    }
+    if let Type::Boolean(b) = **args[0] {
+        Ok(Value::boolean(b))
+    } else {
+        Err(Error::InvalidArg("true?", "boolean value"))
+    }
+}
+
+fn falseq(args: List) -> LispResult {
+    if args.len() != 1 {
+        return Err(Error::InvalidArity("false?", "1"))
+    }
+    if let Type::Boolean(b) = **args[0] {
+        Ok(Value::boolean(!b))
+    } else {
+        Err(Error::InvalidArg("false?", "boolean value"))
+    }
+}
+
+fn symbolq(args: List) -> LispResult {
+    if args.len() != 1 {
+        return Err(Error::InvalidArity("symbol?", "1"))
+    }
+    if let Type::Symbol(_) = **args[0] {
+        Ok(Value::boolean(true))
+    } else {
+        Err(Error::InvalidArg("symbol?", "any value"))
+    }
+}
+
+fn symbol(args: List) -> LispResult {
+    if args.len() != 1 {
+        return Err(Error::InvalidArity("symbol", "1"))
+    }
+    if let Type::Str(ref s) = **args[0] {
+        Ok(Value::symbol(s.clone()))
+    } else {
+        Err(Error::InvalidArg("symbol", "string"))
+    }
+}
+
+fn keyword(args: List) -> LispResult {
+    if args.len() != 1 {
+        return Err(Error::InvalidArity("keyword", "1"))
+    }
+    if let Type::Str(ref s) = **args[0] {
+        Ok(Value::keyword(s.clone()))
+    } else {
+        Err(Error::InvalidArg("keyword", "string"))
+    }
+}
+
+fn keywordq(args: List) -> LispResult {
+    if args.len() != 1 {
+        return Err(Error::InvalidArity("keyword?", "1"))
+    }
+    if let Type::Keyword(_) = **args[0] {
+        Ok(Value::boolean(true))
+    } else {
+        Err(Error::InvalidArg("keyword?", "any value"))
+    }
+}
+
+fn vectorq(args: List) -> LispResult {
+    if args.len() != 1 {
+        return Err(Error::InvalidArity("vector?", "1"))
+    }
+    if let Type::Vector(_) = **args[0] {
+        Ok(Value::boolean(true))
+    } else {
+        Ok(Value::boolean(false))
+    }
+}
+
+fn seqq(args: List) -> LispResult {
+    if args.len() != 1 {
+        return Err(Error::InvalidArity("seq?", "1"))
+    }
+    match **args[0] {
+        Type::Vector(_) | Type::List(_) => Ok(Value::boolean(true)),
+        _ => Ok(Value::boolean(false)),
+    }
+}
+
+fn mapq(args: List) -> LispResult {
+    if args.len() != 1 {
+        return Err(Error::InvalidArity("map?", "1"))
+    }
+    if let Type::Map(_) = **args[0] {
+        Ok(Value::boolean(true))
+    } else {
+        Err(Error::InvalidArg("map?", "any value"))
+    }
+}
+
+fn vector(args: List) -> LispResult {
+    let mut result = Vec::new();
+    for e in args {
+        result.push(e.clone());
+    }
+    Ok(Value::vector(result))
+}
+
+fn hash_map(args: List) -> LispResult {
+    use std::collections::HashMap;
+    let mut result: HashMap<String, Value> = HashMap::new();
+    if args.len() % 2 != 0 {
+        return Err(Error::InvalidArg("hash-map", "equal amount of keywords \
+                                        (odd args) and values (even args)"))
+    }
+    for e in args.as_slice().chunks(2) {
+        match **e[0] {
+            Type::Keyword(ref s) => {
+                result.insert(s.clone(), e[1].clone());
+            }
+            _ => return Err(Error::InvalidArg("hash-map", "equal amount of \
+                                keywords (odd args) and values (even args)"))
+        }
+    }
+    Ok(Value::map(result))
+}
+
+fn assoc(args: List) -> LispResult {
+    if args.len() < 3 {
+        return Err(Error::InvalidArity("assoc", ">= 3"))
+    }
+    if let Type::Map(ref map) = **args[0] {
+        let mut result = map.clone();
+        if args[1..].len() % 2 != 0 {
+            return Err(Error::InvalidArg("assoc", "hash-map followed by equal \
+                        amount of keywords (odd args) and values (even args)"))
+        }
+        for e in args[1..].chunks(2) {
+            match **e[0] {
+                Type::Keyword(ref s) => {
+                    result.insert(s.clone(), e[1].clone());
+                }
+                _ => return Err(Error::InvalidArg("assoc", "hash-map followed \
+                by equal amount of keywords (odd args) and values (even args)"))
+            }
+        }
+        Ok(Value::map(result))
+    } else {
+        Err(Error::InvalidArg("assoc", "hash-map followed by equal amount of \
+                            keywords (odd args) and values (even args)"))
+    }
+}
+
+fn dissoc(args: List) -> LispResult {
+    if args.len() < 2 {
+        return Err(Error::InvalidArity("dissoc", ">= 2"))
+    }
+    if let Type::Map(ref map) = **args[0] {
+        let mut result = map.clone();
+        for e in args[1..].chunks(2) {
+            match **e[0] {
+                Type::Keyword(ref s) => {
+                    result.remove(s);
+                }
+                _ => return Err(Error::InvalidArg("dissoc", "hash-map followed \
+                                                    by any amount of keywords"))
+            }
+        }
+        Ok(Value::map(result))
+    } else {
+        Err(Error::InvalidArg("dissoc", "hash-map followed by any \
+                                        amount of keywords"))
+    }
+}
+
+fn get(args: List) -> LispResult {
+    if args.len() != 2 {
+        return Err(Error::InvalidArity("get", "2"))
+    }
+    if let Type::Map(ref map) = **args[0] {
+        if let Type::Keyword(ref k) = **args[1] {
+            match map.get(k) {
+                Some(v) => Ok(v.clone()),
+                None => Ok(Value::list(vec![]))
+            }
+        } else {
+            Err(Error::InvalidArg("get", "hash-map followed by keyword"))
+        }
+    } else {
+        Err(Error::InvalidArg("get", "hash-map followed by keyword"))
+    }
+}
+
+fn containsq(args: List) -> LispResult {
+    if args.len() != 2 {
+        return Err(Error::InvalidArity("contains?", "2"))
+    }
+    if let Type::Map(ref map) = **args[0] {
+        if let Type::Keyword(ref k) = **args[1] {
+            Ok(Value::boolean(map.contains_key(k)))
+        } else {
+            Err(Error::InvalidArg("contains?", "hash-map followed by keyword"))
+        }
+    } else {
+        Err(Error::InvalidArg("contains?", "hash-map followed by keyword"))
+    }
+}
+
+fn keys(args: List) -> LispResult {
+    if args.len() != 1 {
+        return Err(Error::InvalidArity("keys", "1"))
+    }
+    if let Type::Map(ref map) = **args[0] {
+        Ok(Value::list(map.keys().cloned().map(|e| Value::keyword(e)).collect()))
+    } else {
+        Err(Error::InvalidArg("keys", "hash-map"))
+    }
+}
+
+fn values(args: List) -> LispResult {
+    if args.len() != 1 {
+        return Err(Error::InvalidArity("values", "1"))
+    }
+    if let Type::Map(ref map) = **args[0] {
+        Ok(Value::list(map.values().cloned().collect()))
+    } else {
+        Err(Error::InvalidArg("values", "hash-map"))
+    }
+}
+
 pub fn standart_environment() -> Environment {
     let result = EnvironmentStruct::new(None);
     {
@@ -353,6 +632,28 @@ pub fn standart_environment() -> Environment {
 
         r.set("cons".to_owned(), Value::func(cons));
         r.set("concat".to_owned(), Value::func(concat));
+
+        r.set("first".into(), Value::func(first));
+        r.set("rest".into(), Value::func(rest));
+        r.set("nth".into(), Value::func(nth));
+        r.set("symbol?".into(), Value::func(symbolq));
+        r.set("false?".into(), Value::func(falseq));
+        r.set("true?".into(), Value::func(trueq));
+        r.set("vector?".into(), Value::func(vectorq));
+        r.set("map?".into(), Value::func(mapq));
+        r.set("contains?".into(), Value::func(containsq));
+        r.set("seq?".into(), Value::func(seqq));
+        r.set("keyword?".into(), Value::func(keywordq));
+
+        r.set("symbol".into(), Value::func(symbol));
+        r.set("vector".into(), Value::func(vector));
+        r.set("keyword".into(), Value::func(keyword));
+        r.set("hash-map".into(), Value::func(hash_map));
+        r.set("assoc".into(), Value::func(assoc));
+        r.set("dissoc".into(), Value::func(dissoc));
+        r.set("get".into(), Value::func(get));
+        r.set("keys".into(), Value::func(keys));
+        r.set("values".into(), Value::func(values));
     }
     let load_file = "(def! load-file (fn (f) (eval (read-string (slurp f)))))".into();
     read_eval(load_file, result.clone()).unwrap();

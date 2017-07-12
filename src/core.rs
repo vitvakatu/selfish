@@ -278,7 +278,7 @@ fn swap(args: List) -> LispResult {
                     Some(closure.env.clone()),
                     closure.binds.clone(),
                     func_args
-                );
+                ).map_err(|e| Error::BindError(e))?;
                 use eval::eval;
                 let new_val = eval(closure.body.clone(), new_env.clone())?;
                 *v.borrow_mut() = new_val.clone();

@@ -116,6 +116,7 @@ pub enum Error {
     Incomplete,
     Custom(String),
     Value(Value),
+    BindError(BindError),
 }
 
 impl std::fmt::Display for Error {
@@ -127,6 +128,10 @@ impl std::fmt::Display for Error {
             Error::InvalidArity(ref func, ref valid) => write!(f, "Invalid arity of {}. Valid arity is {}", func, valid),
             Error::ParseError(ref why) => write!(f, "Parse Error: {}", why),
             Error::Value(ref v) => write!(f, "{}", Writer::print(v.clone(), true)),
+            Error::BindError(ref e) => match *e {
+                BindError::NotEnoughArgs => write!(f, "Too many values supplied"),
+                BindError::NotEnoughVals => write!(f, "Not enough values supplied"),
+            }
         }
     }
 }
@@ -213,6 +218,12 @@ impl Writer {
 pub type Environment = Rc<RefCell<EnvironmentStruct>>;
 
 #[derive(Clone, Debug, PartialEq)]
+pub enum BindError {
+    NotEnoughArgs,
+    NotEnoughVals,
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct EnvironmentStruct {
     data: HashMap<String, Value>,
     outer: Option<Environment>,
@@ -235,15 +246,32 @@ impl EnvironmentStruct {
 
     pub fn with_bindings(outer: Option<Environment>,
                          binds: Vec<String>,
-                         exprs: Vec<Value>) -> Environment {
+                         exprs: Vec<Value>) -> Result<Environment, BindError> {
         let mut result = EnvironmentStruct {
             data: HashMap::new(),
             outer: outer,
         };
-        for (b, e) in binds.into_iter().zip(exprs.into_iter()) {
-            result.set(b, e);
+        let mut variadic = false;
+        for (b, e) in binds.iter().zip(exprs.iter()) {
+            if b == "&" {
+                variadic = true;
+            }
+            if !variadic {
+                result.set(b.clone(), e.clone());
+            }
         }
-        Rc::new(RefCell::new(result))
+        if variadic {
+            let var_len = binds.len() - 1;
+            let value_vec = exprs[(var_len - 1)..].to_vec();
+            result.set(binds[var_len].clone(), Value::list(value_vec));
+        } else {
+            if binds.len() < exprs.len() {
+                return Err(BindError::NotEnoughArgs)
+            } else if binds.len() > exprs.len() {
+                return Err(BindError::NotEnoughVals)
+            }
+        }
+        Ok(Rc::new(RefCell::new(result)))
     }
 
     pub fn set(&mut self, key: String, val: Value) {

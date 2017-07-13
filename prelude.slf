@@ -1,0 +1,46 @@
+(defmacro defun
+    (name args body)
+    `(def ~name (fn ~args ~body)))
+
+; Unique symbols generation
+(def *__gensym-counter__* (atom 0))
+(defun gensym
+    ()
+    (symbol (str "G__"
+        (swap *__gensym-counter__*
+            (fn (x) (+ 1 x))))))
+
+(defun inc (a) (+ 1 a))
+(defun dec (a) (- a 1))
+
+(defmacro or
+    (& xs)
+    (if (empty? xs)
+        ()
+        (if (= 1 (count xs))
+            (first xs)
+            (let (condvar (gensym))
+                `(let (~condvar ~(first xs))
+                    (if ~condvar ~condvar (or ~@(rest xs))))))))
+
+(defmacro and
+    (& xs)
+    (if (empty? xs)
+        ()
+        (if (= 1 (count xs))
+            (first xs)
+            (let (condvar (gensym))
+                `(let (~condvar ~(first xs))
+                    (if ~condvar (and ~@(rest xs)) ~condvar))))))
+
+(defmacro cond
+    (& xs)
+    (if (> (count xs) 0)
+        (list 'if (first xs)
+            (if (> (count xs) 1)
+                (nth xs 1)
+                (throw "odd number of forms to cond"))
+            (cons 'cond (rest (rest xs))))
+        ()))
+
+true

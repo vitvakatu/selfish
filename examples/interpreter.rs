@@ -26,15 +26,16 @@ fn main() {
         let readline = rl.readline(">> ");
 
         match readline {
-            Ok(mut line) => {
-                line.push_str("\n");
+            Ok(line) => {
                 if incomplete {
                     previous_input.push_str("\n");
                     previous_input.push_str(&line);
                 }
                 let parse_result = if incomplete {
+                    rl.add_history_entry(&previous_input);
                     read_eval(&previous_input, environment.clone())
                 } else {
+                    rl.add_history_entry(&line);
                     read_eval(&line, environment.clone())
                 };
                 match parse_result {
@@ -42,7 +43,6 @@ fn main() {
                         incomplete = false;
                         previous_input.clear();
                         print(a);
-                        rl.add_history_entry(&line);
                     },
                     Err(e) => match e {
                         Error::Incomplete => {

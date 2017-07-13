@@ -108,19 +108,19 @@ pub fn eval(mut s: Value, mut env: Environment) -> LispResult {
                     return Ok(s.clone());
                 }
                 match **v[0] {
-                    Type::Symbol(ref sym) if sym == "def!" => {
+                    Type::Symbol(ref sym) if sym == "def" => {
                         if v.len() != 3 {
-                            return Err(Error::InvalidArity("def!", "2"))
+                            return Err(Error::InvalidArity("def", "2"))
                         }
                         if let Type::Symbol(ref s) = **v[1] {
                             let val = eval(v[2].clone(), env.clone())?;
                             env.borrow_mut().set(s.clone(), val.clone());
                             return Ok(val.clone())
                         } else {
-                            return Err(Error::InvalidArg("def!", "symbol followed by any value"))
+                            return Err(Error::InvalidArg("def", "symbol followed by any value"))
                         }
                     },
-                    Type::Symbol(ref sym) if sym == "defmacro!" => {
+                    Type::Symbol(ref sym) if sym == "defmacro" => {
                         if v.len() != 4 {
                             return Err(Error::InvalidArity("defmacro!", "3"))
                         }
@@ -136,7 +136,7 @@ pub fn eval(mut s: Value, mut env: Environment) -> LispResult {
                                 return Ok(macros.clone());
                             }
                         }
-                        return Err(Error::InvalidArg("defmacro!", "symbol followed by list of symbols and any value"))
+                        return Err(Error::InvalidArg("defmacro", "symbol followed by list of symbols and any value"))
                     }
                     Type::Symbol(ref sym) if sym == "let" => {
                         if v.len() != 3 {

@@ -627,8 +627,8 @@ pub fn standart_environment() -> Environment {
         r.set("atom".to_owned(), Value::func(atom));
         r.set("atom?".to_owned(), Value::func(atomq));
         r.set("deref".to_owned(), Value::func(deref));
-        r.set("reset!".to_owned(), Value::func(reset));
-        r.set("swap!".to_owned(), Value::func(swap));
+        r.set("reset".to_owned(), Value::func(reset));
+        r.set("swap".to_owned(), Value::func(swap));
 
         r.set("cons".to_owned(), Value::func(cons));
         r.set("concat".to_owned(), Value::func(concat));
@@ -655,7 +655,7 @@ pub fn standart_environment() -> Environment {
         r.set("keys".into(), Value::func(keys));
         r.set("values".into(), Value::func(values));
     }
-    let load_file = "(def! load-file (fn (f) (eval (read-string (slurp f)))))".into();
+    let load_file = "(def load-file (fn (f) (eval (read-string (slurp f)))))".into();
     read_eval(load_file, result.clone()).unwrap();
     result
 }

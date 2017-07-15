@@ -705,8 +705,6 @@ pub fn standart_environment() -> Environment {
         r.set("keys".into(), Value::func(keys));
         r.set("values".into(), Value::func(values));
     }
-    let load_file = "(def load-file (fn (f) (eval (read-string (slurp f)))))".into();
-    read_eval(load_file, result.clone()).unwrap();
     result
 }
 

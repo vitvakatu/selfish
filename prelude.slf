@@ -2,6 +2,10 @@
     (name args body)
     `(def ~name (fn ~args ~body)))
 
+(defun load-file
+    (name)
+    (eval (read-string (slurp name))))
+
 ; Unique symbols generation
 (def *__gensym-counter__* (atom 0))
 (defun gensym

@@ -47,4 +47,11 @@
             (cons 'cond (rest (rest xs))))
         ()))
 
+(defun map
+    (f xs)
+    (if (> (count xs) 1)
+        (cons (f (first xs))
+            (map f (rest xs)))
+        (list (f (first xs)))))
+
 true

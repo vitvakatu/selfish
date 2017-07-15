@@ -623,6 +623,17 @@ fn seqq(args: List) -> LispResult {
     }
 }
 
+fn stringq(args: List) -> LispResult {
+    if args.len() != 1 {
+        return Err(Error::InvalidArity("string?", "1"))
+    }
+    if let Type::Str(_) = **args[0] {
+        Ok(Value::boolean(true))
+    } else {
+        Ok(Value::boolean(false))
+    }
+}
+
 fn symbolq(args: List) -> LispResult {
     if args.len() != 1 {
         return Err(Error::InvalidArity("symbol?", "1"));
@@ -716,6 +727,7 @@ pub fn standart_environment() -> Environment {
         r.set("list?".into(), Value::func(listq));
         r.set("map?".into(), Value::func(mapq));
         r.set("seq?".into(), Value::func(seqq));
+        r.set("string?".into(), Value::func(stringq));
         r.set("symbol?".into(), Value::func(symbolq));
         r.set("true?".into(), Value::func(trueq));
         r.set("vector?".into(), Value::func(vectorq));

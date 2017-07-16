@@ -344,7 +344,7 @@ fn concat(args: List) -> LispResult {
     let mut result = Vec::new();
     for e in args {
         match **e {
-            Type::List(ref v) => result.extend(v.iter().cloned()),
+            Type::List(ref v) => result.extend(v.clone()),
             _ => return Err(Error::InvalidArg("concat", "any amount of lists")),
         }
     }

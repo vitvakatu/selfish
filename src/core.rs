@@ -312,6 +312,33 @@ fn slurp(args: List) -> LispResult {
     }
 }
 
+fn apply(args: List) -> LispResult {
+    if args.len() < 2 {
+        return Err(Error::InvalidArity("apply", ">= 2"))
+    }
+    let last = args.len() - 1;
+    match **args[last] {
+        Type::List(ref v) | Type::Vector(ref v) => {
+            let mut func_args = args[1..last].to_vec();
+            func_args.extend(v.clone());
+            match **args[0] {
+                Type::Func(func) => return func(func_args),
+                Type::Closure(ref closure) => {
+                    let new_env = EnvironmentStruct::with_bindings(
+                        Some(closure.env.clone()),
+                        closure.binds.clone(),
+                        func_args).map_err(|e| Error::BindError(e))?;
+                    use eval::eval;
+                    let new_val = eval(closure.body.clone(), new_env.clone())?;
+                    Ok(new_val)
+                },
+                _ => Err(Error::InvalidArg("apply", "function followed by any values and list"))
+            }
+        }
+        _ => Err(Error::InvalidArg("apply", "function followed by any values and list"))
+    }
+}
+
 // lists
 fn concat(args: List) -> LispResult {
     let mut result = Vec::new();
@@ -700,6 +727,7 @@ pub fn standart_environment() -> Environment {
         r.set("slurp".into(), Value::func(slurp));
 
         // lists
+        r.set("apply".into(), Value::func(apply));
         r.set("concat".into(), Value::func(concat));
         r.set("cons".into(), Value::func(cons));
         r.set("count".into(), Value::func(count));

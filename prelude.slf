@@ -2,6 +2,10 @@
     (name args body)
     `(def ~name (fn ~args ~body)))
 
+(defun load-file
+    (name)
+    (eval (read-string (slurp name))))
+
 ; Unique symbols generation
 (def *__gensym-counter__* (atom 0))
 (defun gensym
@@ -12,6 +16,8 @@
 
 (defun inc (a) (+ 1 a))
 (defun dec (a) (- a 1))
+
+(defun not (pred) (if pred false true))
 
 (defmacro or
     (& xs)
@@ -42,5 +48,12 @@
                 (throw "odd number of forms to cond"))
             (cons 'cond (rest (rest xs))))
         ()))
+
+(defun map
+    (f xs)
+    (if (> (count xs) 1)
+        (cons (f (first xs))
+            (map f (rest xs)))
+        (list (f (first xs)))))
 
 true

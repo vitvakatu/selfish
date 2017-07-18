@@ -15,7 +15,8 @@ fn main() {
     let mut rl = Editor::<()>::new();
     let environment = standart_environment();
     println!("Loading prelude...");
-    match read_eval("(load-file \"prelude.slf\")".into(), environment.clone()) {
+    let load_prelude = "(eval (read-string (slurp \"prelude.slf\")))";
+    match read_eval(load_prelude, environment.clone()) {
         Ok(_) => println!("Done"),
         Err(e) => {
             println!(

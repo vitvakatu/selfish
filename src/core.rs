@@ -314,7 +314,7 @@ fn slurp(args: List) -> LispResult {
 
 fn apply(args: List) -> LispResult {
     if args.len() < 2 {
-        return Err(Error::InvalidArity("apply", ">= 2"))
+        return Err(Error::InvalidArity("apply", ">= 2"));
     }
     let last = args.len() - 1;
     match **args[last] {
@@ -327,15 +327,22 @@ fn apply(args: List) -> LispResult {
                     let new_env = EnvironmentStruct::with_bindings(
                         Some(closure.env.clone()),
                         closure.binds.clone(),
-                        func_args).map_err(|e| Error::BindError(e))?;
+                        func_args,
+                    ).map_err(|e| Error::BindError(e))?;
                     use eval::eval;
                     let new_val = eval(closure.body.clone(), new_env.clone())?;
                     Ok(new_val)
-                },
-                _ => Err(Error::InvalidArg("apply", "function followed by any values and list"))
+                }
+                _ => Err(Error::InvalidArg(
+                    "apply",
+                    "function followed by any values and list",
+                )),
             }
         }
-        _ => Err(Error::InvalidArg("apply", "function followed by any values and list"))
+        _ => Err(Error::InvalidArg(
+            "apply",
+            "function followed by any values and list",
+        )),
     }
 }
 
@@ -652,7 +659,7 @@ fn seqq(args: List) -> LispResult {
 
 fn stringq(args: List) -> LispResult {
     if args.len() != 1 {
-        return Err(Error::InvalidArity("string?", "1"))
+        return Err(Error::InvalidArity("string?", "1"));
     }
     if let Type::Str(_) = **args[0] {
         Ok(Value::boolean(true))

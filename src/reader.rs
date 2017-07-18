@@ -168,8 +168,7 @@ named!(program<&[u8], Value>,
     })
 );
 
-pub struct Reader {
-}
+pub struct Reader {}
 
 impl Reader {
     pub fn read(slice: &[u8]) -> LispResult {

@@ -54,20 +54,19 @@ macro_rules! value_constructor {
 type Function = fn(List) -> LispResult;
 
 impl Value {
-
     pub fn new(v: Type) -> Self {
         Value(Rc::new(v))
     }
 
-    value_constructor!(int (isize) = Type::Int);
-    value_constructor!(float (f64) = Type::Float);
-    value_constructor!(boolean (bool) = Type::Boolean);
-    value_constructor!(symbol (String) = Type::Symbol);
-    value_constructor!(string (String) = Type::Str);
-    value_constructor!(keyword (String) = Type::Keyword);
-    value_constructor!(list (List) = Type::List);
-    value_constructor!(vector (List) = Type::Vector);
-    value_constructor!(func (Function) = Type::Func);
+    value_constructor!(int(isize) = Type::Int);
+    value_constructor!(float(f64) = Type::Float);
+    value_constructor!(boolean(bool) = Type::Boolean);
+    value_constructor!(symbol(String) = Type::Symbol);
+    value_constructor!(string(String) = Type::Str);
+    value_constructor!(keyword(String) = Type::Keyword);
+    value_constructor!(list(List) = Type::List);
+    value_constructor!(vector(List) = Type::Vector);
+    value_constructor!(func(Function) = Type::Func);
 
     pub fn atom(v: Value) -> Self {
         Value(Rc::new(Type::Atom(RefCell::new(v))))
@@ -82,27 +81,19 @@ impl Value {
     }
 
     pub fn closure(binds: Vec<String>, body: Value, env: Environment) -> Self {
-        Value(Rc::new(
-            Type::Closure(
-                Closure {
-                    binds,
-                    body,
-                    env,
-                    is_macro: false,
-                }
-            )
-        ))
+        Value(Rc::new(Type::Closure(Closure {
+            binds,
+            body,
+            env,
+            is_macro: false,
+        })))
     }
 
     pub fn macros(closure: Closure) -> Self {
-        Value(Rc::new(
-            Type::Closure(
-                Closure {
-                    is_macro: true,
-                    .. closure
-                }
-            )
-        ))
+        Value(Rc::new(Type::Closure(Closure {
+            is_macro: true,
+            ..closure
+        })))
     }
 }
 
@@ -124,13 +115,24 @@ impl std::fmt::Display for Error {
         match *self {
             Error::Custom(ref c) => write!(f, "{}", c),
             Error::Incomplete => write!(f, "Incomplete (may be unmatched parentheses)"),
-            Error::InvalidArg(func, valid) => write!(f, "Invalid arguments for {}. Valid arguments should be {}", func, valid),
-            Error::InvalidArity(func, valid) => write!(f, "Invalid arity of {}. Valid arity is {}", func, valid),
+            Error::InvalidArg(func, valid) => {
+                write!(
+                    f,
+                    "Invalid arguments for {}. Valid arguments should be {}",
+                    func,
+                    valid
+                )
+            }
+            Error::InvalidArity(func, valid) => {
+                write!(f, "Invalid arity of {}. Valid arity is {}", func, valid)
+            }
             Error::ParseError(ref why) => write!(f, "Parse Error: {}", why),
             Error::Value(ref v) => write!(f, "{}", Writer::print(v.clone(), true)),
-            Error::BindError(ref e) => match *e {
-                BindError::NotEnoughArgs => write!(f, "Too many values supplied"),
-                BindError::NotEnoughVals => write!(f, "Not enough values supplied"),
+            Error::BindError(ref e) => {
+                match *e {
+                    BindError::NotEnoughArgs => write!(f, "Too many values supplied"),
+                    BindError::NotEnoughVals => write!(f, "Not enough values supplied"),
+                }
             }
         }
     }
@@ -170,7 +172,7 @@ fn print_str(ast: &Value, pretty: bool) -> String {
                 }
             }
             format!("({})", &result)
-        },
+        }
         Type::Vector(ref v) => {
             let mut result = String::new();
             for (i, e) in v.iter().enumerate() {
@@ -180,23 +182,24 @@ fn print_str(ast: &Value, pretty: bool) -> String {
                 }
             }
             format!("[{}]", &result)
-        },
+        }
         Type::Map(ref v) => {
             let mut result = String::new();
             for (i, (key, value)) in v.iter().enumerate() {
-                result.push_str(&format!(":{} {}", &key,
-                                &print_str(value, pretty)));
+                result.push_str(&format!(":{} {}", &key, &print_str(value, pretty)));
                 if i != v.len() - 1 {
                     result.push_str(" ");
                 }
             }
             format!("{{{}}}", &result)
-        },
-        Type::Str(ref v) => if pretty {
-            v.clone()
-        } else {
-            format!("\"{}\"", v)
-        },
+        }
+        Type::Str(ref v) => {
+            if pretty {
+                v.clone()
+            } else {
+                format!("\"{}\"", v)
+            }
+        }
         Type::Symbol(ref v) => v.clone(),
         Type::Keyword(ref v) => format!(":{}", v),
         Type::Func(_) => "#<function>".to_owned(),
@@ -206,8 +209,7 @@ fn print_str(ast: &Value, pretty: bool) -> String {
     }
 }
 
-pub struct Writer {
-}
+pub struct Writer {}
 
 impl Writer {
     pub fn print(ast: Value, pretty: bool) -> String {
@@ -244,9 +246,11 @@ impl EnvironmentStruct {
         }
     }
 
-    pub fn with_bindings(outer: Option<Environment>,
-                         binds: Vec<String>,
-                         exprs: Vec<Value>) -> Result<Environment, BindError> {
+    pub fn with_bindings(
+        outer: Option<Environment>,
+        binds: Vec<String>,
+        exprs: Vec<Value>,
+    ) -> Result<Environment, BindError> {
         let mut result = EnvironmentStruct {
             data: HashMap::new(),
             outer: outer,
@@ -266,9 +270,9 @@ impl EnvironmentStruct {
             result.set(binds[var_len].clone(), Value::list(value_vec));
         } else {
             if binds.len() < exprs.len() {
-                return Err(BindError::NotEnoughArgs)
+                return Err(BindError::NotEnoughArgs);
             } else if binds.len() > exprs.len() {
-                return Err(BindError::NotEnoughVals)
+                return Err(BindError::NotEnoughVals);
             }
         }
         Ok(Rc::new(RefCell::new(result)))
@@ -286,7 +290,7 @@ impl EnvironmentStruct {
                 Some(ref outer) => {
                     let outer = outer.borrow();
                     outer.find(key)
-                },
+                }
                 None => None,
             }
         }
@@ -299,9 +303,12 @@ impl EnvironmentStruct {
                 if let Some(env) = self.find(key.clone()) {
                     env.borrow().get(key)
                 } else {
-                    Err(Error::Custom(format!("No value with name '{}' in the current scope", &key)))
+                    Err(Error::Custom(format!(
+                        "No value with name '{}' in the current scope",
+                        &key
+                    )))
                 }
-            },
+            }
         }
     }
 }
@@ -311,16 +318,31 @@ mod tests {
     use ::*;
     #[test]
     fn atoms() {
-        assert_eq!(atom(&b"true"[..]), IResult::Done(&b""[..], Type::Boolean(true)));
-        assert_eq!(atom(&b"false"[..]), IResult::Done(&b""[..], Type::Boolean(false)));
-        assert_eq!(atom(&b"function"[..]), IResult::Done(&b""[..], Type::Symbol("function".to_owned())));
-        assert_eq!(atom(&b":keyword"[..]), IResult::Done(&b""[..], Type::Keyword("keyword".to_owned())));
+        assert_eq!(
+            atom(&b"true"[..]),
+            IResult::Done(&b""[..], Type::Boolean(true))
+        );
+        assert_eq!(
+            atom(&b"false"[..]),
+            IResult::Done(&b""[..], Type::Boolean(false))
+        );
+        assert_eq!(
+            atom(&b"function"[..]),
+            IResult::Done(&b""[..], Type::Symbol("function".to_owned()))
+        );
+        assert_eq!(
+            atom(&b":keyword"[..]),
+            IResult::Done(&b""[..], Type::Keyword("keyword".to_owned()))
+        );
     }
 
     #[test]
     fn numbers() {
         assert_eq!(atom(&b"32"[..]), IResult::Done(&b""[..], Type::Int(32)));
-        assert_eq!(atom(&b"-32321"[..]), IResult::Done(&b""[..], Type::Int(-32321)));
+        assert_eq!(
+            atom(&b"-32321"[..]),
+            IResult::Done(&b""[..], Type::Int(-32321))
+        );
     }
 
     #[test]
@@ -330,10 +352,14 @@ mod tests {
 
     #[test]
     fn strings() {
-        assert_eq!(atom(&b"\"some string\""[..]), IResult::Done(&b""[..],
-        Type::Str("some string".to_owned())));
-        assert_eq!(atom(&b"\"some \\\"escaped\\\" string\""[..]), IResult::Done(&b""[..],
-        Type::Str("some \"escaped\" string".to_owned())));
+        assert_eq!(
+            atom(&b"\"some string\""[..]),
+            IResult::Done(&b""[..], Type::Str("some string".to_owned()))
+        );
+        assert_eq!(
+            atom(&b"\"some \\\"escaped\\\" string\""[..]),
+            IResult::Done(&b""[..], Type::Str("some \"escaped\" string".to_owned()))
+        );
     }
 
     #[test]
@@ -347,14 +373,18 @@ mod tests {
             Rc::new(Type::Int(-30)),
             Rc::new(Type::Str("some string".to_owned())),
         ]);
-        assert_eq!(list(&b"(somesymbol 11 true 1.3 10231 -30 \"some string\")"[..]),
-        IResult::Done(&b""[..], list1.clone()));
+        assert_eq!(
+            list(&b"(somesymbol 11 true 1.3 10231 -30 \"some string\")"[..]),
+            IResult::Done(&b""[..], list1.clone())
+        );
         let list2 = Type::List(vec![
             Rc::new(list1),
             Rc::new(Type::Symbol("somesymbol".to_owned())),
         ]);
-        assert_eq!(list(&b"((somesymbol 11 true 1.3 10231 -30 \"some string\") somesymbol)"[..]),
-        IResult::Done(&b""[..], list2));
+        assert_eq!(
+            list(&b"((somesymbol 11 true 1.3 10231 -30 \"some string\") somesymbol)"[..]),
+            IResult::Done(&b""[..], list2)
+        );
     }
 
     #[test]
@@ -368,13 +398,17 @@ mod tests {
             Rc::new(Type::Int(-30)),
             Rc::new(Type::Str("some string".to_owned())),
         ]);
-        assert_eq!(vector(&b"[somesymbol 11 true 1.3 10231 -30 \"some string\"]"[..]),
-        IResult::Done(&b""[..], vector1.clone()));
+        assert_eq!(
+            vector(&b"[somesymbol 11 true 1.3 10231 -30 \"some string\"]"[..]),
+            IResult::Done(&b""[..], vector1.clone())
+        );
         let vector2 = Type::Vector(vec![
             Rc::new(vector1),
             Rc::new(Type::Symbol("somesymbol".to_owned())),
         ]);
-        assert_eq!(vector(&b"[[somesymbol 11 true 1.3 10231 -30 \"some string\"] somesymbol]"[..]),
-        IResult::Done(&b""[..], vector2));
+        assert_eq!(
+            vector(&b"[[somesymbol 11 true 1.3 10231 -30 \"some string\"] somesymbol]"[..]),
+            IResult::Done(&b""[..], vector2)
+        );
     }
 }

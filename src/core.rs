@@ -100,7 +100,7 @@ fn emptyq(args: List) -> LispResult {
             } else {
                 Ok(Value::boolean(false))
             }
-        },
+        }
         _ => Err(Error::InvalidArg("empty?", "either list or vector")),
     }
 }
@@ -110,9 +110,7 @@ fn count(args: List) -> LispResult {
         return Err(Error::InvalidArity("count", "1"));
     }
     match **args[0] {
-        Type::List(ref v) | Type::Vector(ref v) => {
-            Ok(Value::int(v.len() as isize))
-        },
+        Type::List(ref v) | Type::Vector(ref v) => Ok(Value::int(v.len() as isize)),
         _ => Err(Error::InvalidArg("count", "either list or vector")),
     }
 }
@@ -143,7 +141,8 @@ macro_rules! construct_cmp {
                     } else {
                         Ok(Value::boolean(false))
                     },
-                    _ => Err(Error::InvalidArg(stringify!($func_name), "either integer or floating point numbers")),
+                    _ => Err(Error::InvalidArg(stringify!($func_name),
+                             "either integer or floating point numbers")),
                 }
             },
             Type::Float(fst) => {
@@ -158,38 +157,40 @@ macro_rules! construct_cmp {
                     } else {
                         Ok(Value::boolean(false))
                     },
-                    _ => Err(Error::InvalidArg(stringify!($func_name), "either integer or floating point numbers")),
+                    _ => Err(Error::InvalidArg(stringify!($func_name),
+                             "either integer or floating point numbers")),
                 }
             },
-            _ => Err(Error::InvalidArg(stringify!($func_name), "either integer or floating point numbers")),
+            _ => Err(Error::InvalidArg(stringify!($func_name),
+                     "either integer or floating point numbers")),
         }
     )
 }
 
 fn lt(args: List) -> LispResult {
     if args.len() != 2 {
-        return Err(Error::InvalidArity("<", "2"))
+        return Err(Error::InvalidArity("<", "2"));
     }
     construct_cmp!(args, lt, "<")
 }
 
 fn le(args: List) -> LispResult {
     if args.len() != 2 {
-        return Err(Error::InvalidArity("<=", "2"))
+        return Err(Error::InvalidArity("<=", "2"));
     }
     construct_cmp!(args, le, "<=")
 }
 
 fn gt(args: List) -> LispResult {
     if args.len() != 2 {
-        return Err(Error::InvalidArity(">", "2"))
+        return Err(Error::InvalidArity(">", "2"));
     }
     construct_cmp!(args, gt, ">")
 }
 
 fn ge(args: List) -> LispResult {
     if args.len() != 2 {
-        return Err(Error::InvalidArity(">=", "2"))
+        return Err(Error::InvalidArity(">=", "2"));
     }
     construct_cmp!(args, ge, ">=")
 }
@@ -197,7 +198,7 @@ fn ge(args: List) -> LispResult {
 fn read_string(args: List) -> LispResult {
     use Reader;
     if args.len() != 1 {
-        return Err(Error::InvalidArity("read-string", "1"))
+        return Err(Error::InvalidArity("read-string", "1"));
     }
     if let Type::Str(ref s) = **args[0] {
         Reader::read(s.as_bytes())
@@ -208,7 +209,7 @@ fn read_string(args: List) -> LispResult {
 
 fn slurp(args: List) -> LispResult {
     if args.len() != 1 {
-        return Err(Error::InvalidArity("slurp", "1"))
+        return Err(Error::InvalidArity("slurp", "1"));
     }
     use std::io::prelude::*;
     use std::fs::File;
@@ -224,7 +225,7 @@ fn slurp(args: List) -> LispResult {
 
 fn atom(args: List) -> LispResult {
     if args.len() != 1 {
-        return Err(Error::InvalidArity("atom", "1"))
+        return Err(Error::InvalidArity("atom", "1"));
     }
     let t = args[0].clone();
     Ok(Value::atom(t))
@@ -232,7 +233,7 @@ fn atom(args: List) -> LispResult {
 
 fn atomq(args: List) -> LispResult {
     if args.len() != 1 {
-        return Err(Error::InvalidArity("atom?", "1"))
+        return Err(Error::InvalidArity("atom?", "1"));
     }
     if let Type::Atom(_) = **args[0] {
         Ok(Value::boolean(true))
@@ -243,7 +244,7 @@ fn atomq(args: List) -> LispResult {
 
 fn deref(args: List) -> LispResult {
     if args.len() != 1 {
-        return Err(Error::InvalidArity("deref", "1"))
+        return Err(Error::InvalidArity("deref", "1"));
     }
     if let Type::Atom(ref v) = **args[0] {
         Ok(v.borrow().clone())
@@ -254,7 +255,7 @@ fn deref(args: List) -> LispResult {
 
 fn reset(args: List) -> LispResult {
     if args.len() != 2 {
-        return Err(Error::InvalidArity("reset!", "2"))
+        return Err(Error::InvalidArity("reset!", "2"));
     }
     if let Type::Atom(ref v) = **args[0] {
         *v.borrow_mut() = args[1].clone();
@@ -266,7 +267,7 @@ fn reset(args: List) -> LispResult {
 
 fn swap(args: List) -> LispResult {
     if args.len() < 2 {
-        return Err(Error::InvalidArity("swap!", ">= 2"))
+        return Err(Error::InvalidArity("swap!", ">= 2"));
     }
     let mut func_args = args[2..].to_vec();
     if let Type::Atom(ref v) = **args[0] {
@@ -277,28 +278,34 @@ fn swap(args: List) -> LispResult {
                 let new_env = EnvironmentStruct::with_bindings(
                     Some(closure.env.clone()),
                     closure.binds.clone(),
-                    func_args
+                    func_args,
                 ).map_err(|e| Error::BindError(e))?;
                 use eval::eval;
                 let new_val = eval(closure.body.clone(), new_env.clone())?;
                 *v.borrow_mut() = new_val.clone();
                 Ok(new_val)
-            },
+            }
             Type::Func(func) => {
                 let new_val = func(func_args)?;
                 *v.borrow_mut() = new_val.clone();
                 Ok(new_val)
             }
-            _ => Err(Error::InvalidArg("swap!", "atom, either closure or function, any values"))
+            _ => Err(Error::InvalidArg(
+                "swap!",
+                "atom, either closure or function, any values",
+            )),
         }
     } else {
-        Err(Error::InvalidArg("swap!", "atom, either closure or function, any values"))
+        Err(Error::InvalidArg(
+            "swap!",
+            "atom, either closure or function, any values",
+        ))
     }
 }
 
 fn cons(args: List) -> LispResult {
     if args.len() != 2 {
-        return Err(Error::InvalidArity("cons", "2"))
+        return Err(Error::InvalidArity("cons", "2"));
     }
     if let Type::List(ref v) = **args[1].clone() {
         let mut result = v.clone();
@@ -322,26 +329,34 @@ fn concat(args: List) -> LispResult {
 
 fn nth(args: List) -> LispResult {
     if args.len() != 2 {
-        return Err(Error::InvalidArity("nth", "2"))
+        return Err(Error::InvalidArity("nth", "2"));
     }
     let index = match **args[1] {
         Type::Int(i) => i,
-        _ => return Err(Error::InvalidArg("nth", "list or vector followed by integer number"))
+        _ => {
+            return Err(Error::InvalidArg(
+                "nth",
+                "list or vector followed by integer number",
+            ))
+        }
     };
     match **args[0] {
         Type::List(ref v) | Type::Vector(ref v) => {
             if v.len() <= index as usize || index < 0 {
-                return Err(Error::Value(Value::string("index out of bounds".into())))
+                return Err(Error::Value(Value::string("index out of bounds".into())));
             }
             Ok(v[index as usize].clone())
         }
-        _ => Err(Error::InvalidArg("nth", "list or vector followed by integer number"))
+        _ => Err(Error::InvalidArg(
+            "nth",
+            "list or vector followed by integer number",
+        )),
     }
 }
 
 fn first(args: List) -> LispResult {
     if args.len() != 1 {
-        return Err(Error::InvalidArity("first", "1"))
+        return Err(Error::InvalidArity("first", "1"));
     }
     match **args[0] {
         Type::List(ref v) | Type::Vector(ref v) => {
@@ -351,13 +366,13 @@ fn first(args: List) -> LispResult {
                 Ok(Value::list(vec![]))
             }
         }
-        _ => Err(Error::InvalidArg("first", "list or vector"))
+        _ => Err(Error::InvalidArg("first", "list or vector")),
     }
 }
 
 fn rest(args: List) -> LispResult {
     if args.len() != 1 {
-        return Err(Error::InvalidArity("rest", "1"))
+        return Err(Error::InvalidArity("rest", "1"));
     }
     match **args[0] {
         Type::List(ref v) | Type::Vector(ref v) => {
@@ -367,13 +382,13 @@ fn rest(args: List) -> LispResult {
                 Ok(Value::list(vec![]))
             }
         }
-        _ => Err(Error::InvalidArg("rest", "list or vector"))
+        _ => Err(Error::InvalidArg("rest", "list or vector")),
     }
 }
 
 fn trueq(args: List) -> LispResult {
     if args.len() != 1 {
-        return Err(Error::InvalidArity("true?", "1"))
+        return Err(Error::InvalidArity("true?", "1"));
     }
     if let Type::Boolean(b) = **args[0] {
         Ok(Value::boolean(b))
@@ -384,7 +399,7 @@ fn trueq(args: List) -> LispResult {
 
 fn falseq(args: List) -> LispResult {
     if args.len() != 1 {
-        return Err(Error::InvalidArity("false?", "1"))
+        return Err(Error::InvalidArity("false?", "1"));
     }
     if let Type::Boolean(b) = **args[0] {
         Ok(Value::boolean(!b))
@@ -395,7 +410,7 @@ fn falseq(args: List) -> LispResult {
 
 fn symbolq(args: List) -> LispResult {
     if args.len() != 1 {
-        return Err(Error::InvalidArity("symbol?", "1"))
+        return Err(Error::InvalidArity("symbol?", "1"));
     }
     if let Type::Symbol(_) = **args[0] {
         Ok(Value::boolean(true))
@@ -406,7 +421,7 @@ fn symbolq(args: List) -> LispResult {
 
 fn symbol(args: List) -> LispResult {
     if args.len() != 1 {
-        return Err(Error::InvalidArity("symbol", "1"))
+        return Err(Error::InvalidArity("symbol", "1"));
     }
     if let Type::Str(ref s) = **args[0] {
         Ok(Value::symbol(s.clone()))
@@ -417,7 +432,7 @@ fn symbol(args: List) -> LispResult {
 
 fn keyword(args: List) -> LispResult {
     if args.len() != 1 {
-        return Err(Error::InvalidArity("keyword", "1"))
+        return Err(Error::InvalidArity("keyword", "1"));
     }
     if let Type::Str(ref s) = **args[0] {
         Ok(Value::keyword(s.clone()))
@@ -428,7 +443,7 @@ fn keyword(args: List) -> LispResult {
 
 fn keywordq(args: List) -> LispResult {
     if args.len() != 1 {
-        return Err(Error::InvalidArity("keyword?", "1"))
+        return Err(Error::InvalidArity("keyword?", "1"));
     }
     if let Type::Keyword(_) = **args[0] {
         Ok(Value::boolean(true))
@@ -439,7 +454,7 @@ fn keywordq(args: List) -> LispResult {
 
 fn vectorq(args: List) -> LispResult {
     if args.len() != 1 {
-        return Err(Error::InvalidArity("vector?", "1"))
+        return Err(Error::InvalidArity("vector?", "1"));
     }
     if let Type::Vector(_) = **args[0] {
         Ok(Value::boolean(true))
@@ -450,7 +465,7 @@ fn vectorq(args: List) -> LispResult {
 
 fn seqq(args: List) -> LispResult {
     if args.len() != 1 {
-        return Err(Error::InvalidArity("seq?", "1"))
+        return Err(Error::InvalidArity("seq?", "1"));
     }
     match **args[0] {
         Type::Vector(_) | Type::List(_) => Ok(Value::boolean(true)),
@@ -460,7 +475,7 @@ fn seqq(args: List) -> LispResult {
 
 fn mapq(args: List) -> LispResult {
     if args.len() != 1 {
-        return Err(Error::InvalidArity("map?", "1"))
+        return Err(Error::InvalidArity("map?", "1"));
     }
     if let Type::Map(_) = **args[0] {
         Ok(Value::boolean(true))
@@ -481,16 +496,24 @@ fn hash_map(args: List) -> LispResult {
     use std::collections::HashMap;
     let mut result: HashMap<String, Value> = HashMap::new();
     if args.len() % 2 != 0 {
-        return Err(Error::InvalidArg("hash-map", "equal amount of keywords \
-                                        (odd args) and values (even args)"))
+        return Err(Error::InvalidArg(
+            "hash-map",
+            "equal amount of keywords \
+             (odd args) and values (even args)",
+        ));
     }
     for e in args.as_slice().chunks(2) {
         match **e[0] {
             Type::Keyword(ref s) => {
                 result.insert(s.clone(), e[1].clone());
             }
-            _ => return Err(Error::InvalidArg("hash-map", "equal amount of \
-                                keywords (odd args) and values (even args)"))
+            _ => {
+                return Err(Error::InvalidArg(
+                    "hash-map",
+                    "equal amount of \
+                     keywords (odd args) and values (even args)",
+                ))
+            }
         }
     }
     Ok(Value::map(result))
@@ -498,33 +521,44 @@ fn hash_map(args: List) -> LispResult {
 
 fn assoc(args: List) -> LispResult {
     if args.len() < 3 {
-        return Err(Error::InvalidArity("assoc", ">= 3"))
+        return Err(Error::InvalidArity("assoc", ">= 3"));
     }
     if let Type::Map(ref map) = **args[0] {
         let mut result = map.clone();
         if args[1..].len() % 2 != 0 {
-            return Err(Error::InvalidArg("assoc", "hash-map followed by equal \
-                        amount of keywords (odd args) and values (even args)"))
+            return Err(Error::InvalidArg(
+                "assoc",
+                "hash-map followed by equal \
+                 amount of keywords (odd args) and values (even args)",
+            ));
         }
         for e in args[1..].chunks(2) {
             match **e[0] {
                 Type::Keyword(ref s) => {
                     result.insert(s.clone(), e[1].clone());
                 }
-                _ => return Err(Error::InvalidArg("assoc", "hash-map followed \
-                by equal amount of keywords (odd args) and values (even args)"))
+                _ => {
+                    return Err(Error::InvalidArg(
+                        "assoc",
+                        "hash-map followed \
+                         by equal amount of keywords (odd args) and values (even args)",
+                    ))
+                }
             }
         }
         Ok(Value::map(result))
     } else {
-        Err(Error::InvalidArg("assoc", "hash-map followed by equal amount of \
-                            keywords (odd args) and values (even args)"))
+        Err(Error::InvalidArg(
+            "assoc",
+            "hash-map followed by equal amount of \
+             keywords (odd args) and values (even args)",
+        ))
     }
 }
 
 fn dissoc(args: List) -> LispResult {
     if args.len() < 2 {
-        return Err(Error::InvalidArity("dissoc", ">= 2"))
+        return Err(Error::InvalidArity("dissoc", ">= 2"));
     }
     if let Type::Map(ref map) = **args[0] {
         let mut result = map.clone();
@@ -533,26 +567,34 @@ fn dissoc(args: List) -> LispResult {
                 Type::Keyword(ref s) => {
                     result.remove(s);
                 }
-                _ => return Err(Error::InvalidArg("dissoc", "hash-map followed \
-                                                    by any amount of keywords"))
+                _ => {
+                    return Err(Error::InvalidArg(
+                        "dissoc",
+                        "hash-map followed \
+                         by any amount of keywords",
+                    ))
+                }
             }
         }
         Ok(Value::map(result))
     } else {
-        Err(Error::InvalidArg("dissoc", "hash-map followed by any \
-                                        amount of keywords"))
+        Err(Error::InvalidArg(
+            "dissoc",
+            "hash-map followed by any \
+             amount of keywords",
+        ))
     }
 }
 
 fn get(args: List) -> LispResult {
     if args.len() != 2 {
-        return Err(Error::InvalidArity("get", "2"))
+        return Err(Error::InvalidArity("get", "2"));
     }
     if let Type::Map(ref map) = **args[0] {
         if let Type::Keyword(ref k) = **args[1] {
             match map.get(k) {
                 Some(v) => Ok(v.clone()),
-                None => Ok(Value::list(vec![]))
+                None => Ok(Value::list(vec![])),
             }
         } else {
             Err(Error::InvalidArg("get", "hash-map followed by keyword"))
@@ -564,25 +606,33 @@ fn get(args: List) -> LispResult {
 
 fn containsq(args: List) -> LispResult {
     if args.len() != 2 {
-        return Err(Error::InvalidArity("contains?", "2"))
+        return Err(Error::InvalidArity("contains?", "2"));
     }
     if let Type::Map(ref map) = **args[0] {
         if let Type::Keyword(ref k) = **args[1] {
             Ok(Value::boolean(map.contains_key(k)))
         } else {
-            Err(Error::InvalidArg("contains?", "hash-map followed by keyword"))
+            Err(Error::InvalidArg(
+                "contains?",
+                "hash-map followed by keyword",
+            ))
         }
     } else {
-        Err(Error::InvalidArg("contains?", "hash-map followed by keyword"))
+        Err(Error::InvalidArg(
+            "contains?",
+            "hash-map followed by keyword",
+        ))
     }
 }
 
 fn keys(args: List) -> LispResult {
     if args.len() != 1 {
-        return Err(Error::InvalidArity("keys", "1"))
+        return Err(Error::InvalidArity("keys", "1"));
     }
     if let Type::Map(ref map) = **args[0] {
-        Ok(Value::list(map.keys().cloned().map(Value::keyword).collect()))
+        Ok(Value::list(
+            map.keys().cloned().map(Value::keyword).collect(),
+        ))
     } else {
         Err(Error::InvalidArg("keys", "hash-map"))
     }
@@ -590,7 +640,7 @@ fn keys(args: List) -> LispResult {
 
 fn values(args: List) -> LispResult {
     if args.len() != 1 {
-        return Err(Error::InvalidArity("values", "1"))
+        return Err(Error::InvalidArity("values", "1"));
     }
     if let Type::Map(ref map) = **args[0] {
         Ok(Value::list(map.values().cloned().collect()))

@@ -17,8 +17,13 @@ fn main() {
     println!("Loading prelude...");
     match read_eval("(load-file \"prelude.slf\")".into(), environment.clone()) {
         Ok(_) => println!("Done"),
-        Err(e) => println!("Error, you have access to basic functions only\n\
-                            Reason: {}", &e),
+        Err(e) => {
+            println!(
+                "Error, you have access to basic functions only\n\
+                 Reason: {}",
+                &e
+            )
+        }
     }
     let mut incomplete = false;
     let mut previous_input = String::new();
@@ -43,22 +48,24 @@ fn main() {
                         incomplete = false;
                         previous_input.clear();
                         print(a);
-                    },
-                    Err(e) => match e {
-                        Error::Incomplete => {
-                            if !incomplete {
-                                previous_input.push_str(&line);
+                    }
+                    Err(e) => {
+                        match e {
+                            Error::Incomplete => {
+                                if !incomplete {
+                                    previous_input.push_str(&line);
+                                }
+                                incomplete = true;
                             }
-                            incomplete = true;
-                        },
-                        _ => {
-                            incomplete = false;
-                            previous_input.clear();
-                            print(Err(e));
-                        },
+                            _ => {
+                                incomplete = false;
+                                previous_input.clear();
+                                print(Err(e));
+                            }
+                        }
                     }
                 }
-            },
+            }
             Err(_) => break,
         }
     }

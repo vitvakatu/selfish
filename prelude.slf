@@ -17,6 +17,8 @@
 (defun inc (a) (+ 1 a))
 (defun dec (a) (- a 1))
 
+(defun not (pred) (if pred false true))
+
 (defmacro or
     (& xs)
     (if (empty? xs)
